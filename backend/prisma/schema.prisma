@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  passwordHash String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+}
+
+enum Role {
+  ADMIN
+  BEGELEIDER
+  MANAGER
+}
+
+model Supervisor {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  locationId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locationId])
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Youth {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  birthDate DateTime
+  startDate DateTime
+  endDate   DateTime?
+  supervisorId String
+  locationId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  phaseProgress YouthPhaseProgress[]
+  incidents BehaviorIncident[]
+  outflows Outflow[]
+
+  @@index([supervisorId])
+  @@index([locationId])
+}
+
+model Outflow {
+  id        String   @id @default(cuid())
+  youthId   String   @unique
+  outflowDate DateTime
+  reason    String
+  referred  Boolean
+  referralOrganization String?
+  housingStatus HousingStatus
+  workStatus Boolean
+  schoolStatus Boolean
+  successful Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  youth Youth @relation(fields: [youthId], references: [id], onDelete: Cascade)
+
+  @@index([outflowDate])
+  @@index([successful])
+}
+
+enum HousingStatus {
+  STUDIO
+  ZELFSTANDIG
+  OUDERS
+  CRISIS
+  ONBEKEND
+}
+
+// PHASE SYSTEM MODELS
+
+model Phase {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  description String
+  order     Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  youthProgress YouthPhaseProgress[]
+  incidents BehaviorIncident[]
+
+  @@index([order])
+}
+
+model YouthPhaseProgress {
+  id        String   @id @default(cuid())
+  youthId   String
+  phaseId   String
+  startDate DateTime
+  endDate   DateTime?
+  status    PhaseStatus @default(ACTIVE)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  youth Youth @relation(fields: [youthId], references: [id], onDelete: Cascade)
+  phase Phase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@unique([youthId, phaseId, startDate])
+  @@index([youthId])
+  @@index([phaseId])
+  @@index([status])
+  @@index([startDate])
+}
+
+enum PhaseStatus {
+  ACTIVE
+  COMPLETED
+  REGRESSED
+}
+
+model BehaviorIncident {
+  id        String   @id @default(cuid())
+  youthId   String
+  phaseId   String
+  category  IncidentCategory
+  severity  Severity
+  actionTaken ActionType
+  pbsStep   PbsStep
+  reportedBy String
+  description String?
+  createdAt DateTime @default(now())
+
+  youth Youth @relation(fields: [youthId], references: [id], onDelete: Cascade)
+  phase Phase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([youthId])
+  @@index([phaseId])
+  @@index([category])
+  @@index([severity])
+  @@index([actionTaken])
+  @@index([createdAt])
+}
+
+enum IncidentCategory {
+  ORDER_DISTURBANCE
+  AVOIDANCE
+  HYGIENE
+  AGGRESSION
+  SUBSTANCE_USE
+  BORDER_CROSSING
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ActionType {
+  NOTE
+  TIMEOUT
+  OFFICIAL_WARNING
+}
+
+enum PbsStep {
+  STEP1
+  STEP2
+  STEP3
+  STEP4
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  youthId   String
+  type      AlertType
+  message   String
+  triggerReason String
+  acknowledged Boolean @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([youthId])
+  @@index([type])
+  @@index([acknowledged])
+}
+
+enum AlertType {
+  UVO_REQUIRED
+  OFFICIAL_WARNING_REVIEW
+  HIGH_SEVERITY_INCIDENT
+  PHASE_REGRESSION
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
