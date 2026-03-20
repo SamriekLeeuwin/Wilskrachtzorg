@@ -1,5 +1,28 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  Chip,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 
 type BegeleiderRow = {
   id: string
@@ -29,7 +52,9 @@ function BegeleidersPage() {
     return rows.filter((row) => {
       const matchesLocatie = locatieFilter === 'Alle' || row.locatie === locatieFilter
       const matchesStatus =
-        statusFilter === 'Alle' || (statusFilter === 'Actief' && row.actief) || (statusFilter === 'Inactief' && !row.actief)
+        statusFilter === 'Alle' ||
+        (statusFilter === 'Actief' && row.actief) ||
+        (statusFilter === 'Inactief' && !row.actief)
       return matchesLocatie && matchesStatus
     })
   }, [rows, locatieFilter, statusFilter])
@@ -57,88 +82,123 @@ function BegeleidersPage() {
   }
 
   return (
-    <div className="page-stack">
-      <section className="card">
-        <h2 className="card-title" style={{ fontSize: 22 }}>
-          Begeleidersbeheer
-        </h2>
-        <p className="card-subtitle">
-          Overzicht van begeleiders met locatie en status. Voeg nieuwe mock-gebruikers toe via het formulier.
-        </p>
+    <Stack spacing={2.5}>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 700 }}>
+            Begeleidersbeheer
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.75 }}>
+            Overzicht van begeleiders met locatie en status.
+          </Typography>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-          <select
-            value={locatieFilter}
-            onChange={(event) => setLocatieFilter(event.target.value as 'Alle' | 'Tilburg' | 'Breda')}
-            className="ui-select"
-          >
-            <option value="Alle">Alle locaties</option>
-            <option value="Tilburg">Tilburg</option>
-            <option value="Breda">Breda</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as 'Alle' | 'Actief' | 'Inactief')}
-            className="ui-select"
-          >
-            <option value="Alle">Alle statussen</option>
-            <option value="Actief">Actief</option>
-            <option value="Inactief">Inactief</option>
-          </select>
-        </div>
+          <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="locatie-filter-label">Locatie</InputLabel>
+                <Select
+                  labelId="locatie-filter-label"
+                  value={locatieFilter}
+                  label="Locatie"
+                  onChange={(event) => setLocatieFilter(event.target.value as 'Alle' | 'Tilburg' | 'Breda')}
+                >
+                  <MenuItem value="Alle">Alle locaties</MenuItem>
+                  <MenuItem value="Tilburg">Tilburg</MenuItem>
+                  <MenuItem value="Breda">Breda</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="status-filter-label">Status</InputLabel>
+                <Select
+                  labelId="status-filter-label"
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(event) => setStatusFilter(event.target.value as 'Alle' | 'Actief' | 'Inactief')}
+                >
+                  <MenuItem value="Alle">Alle statussen</MenuItem>
+                  <MenuItem value="Actief">Actief</MenuItem>
+                  <MenuItem value="Inactief">Inactief</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
 
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Naam</th>
-              <th>E-mail</th>
-              <th>Locatie</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{row.naam}</td>
-                <td>{row.email}</td>
-                <td>{row.locatie}</td>
-                <td>
-                  <span className={row.actief ? 'badge badge-success' : 'badge badge-warning'}>
-                    {row.actief ? 'Actief' : 'Inactief'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          </table>
-        </div>
-      </section>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Naam</TableCell>
+                  <TableCell>E-mail</TableCell>
+                  <TableCell>Locatie</TableCell>
+                  <TableCell>Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRows.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.naam}</TableCell>
+                    <TableCell>{row.email}</TableCell>
+                    <TableCell>{row.locatie}</TableCell>
+                    <TableCell>
+                      <Chip size="small" label={row.actief ? 'Actief' : 'Inactief'} color={row.actief ? 'success' : 'warning'} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <h3 className="card-title">Nieuwe begeleider toevoegen (mock)</h3>
-        <form onSubmit={handleSubmit} style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
-          <input value={naam} onChange={(event) => setNaam(event.target.value)} placeholder="Naam" className="ui-input" required />
-          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail" type="email" className="ui-input" required />
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+            Nieuwe begeleider toevoegen
+          </Typography>
 
-          <select value={locatie} onChange={(event) => setLocatie(event.target.value as 'Tilburg' | 'Breda')} className="ui-select">
-            <option value="Tilburg">Tilburg</option>
-            <option value="Breda">Breda</option>
-          </select>
-
-          <label className="ui-select" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={actief} onChange={(event) => setActief(event.target.checked)} />
-            Actief
-          </label>
-
-          <button type="submit" className="ui-button" style={{ width: 'fit-content' }}>
-            Opslaan
-          </button>
-        </form>
-      </section>
-    </div>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Grid container spacing={1.25}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField size="small" label="Naam" value={naam} onChange={(event) => setNaam(event.target.value)} fullWidth required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField size="small" type="email" label="E-mail" value={email} onChange={(event) => setEmail(event.target.value)} fullWidth required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="locatie-input-label">Locatie</InputLabel>
+                  <Select
+                    labelId="locatie-input-label"
+                    value={locatie}
+                    label="Locatie"
+                    onChange={(event) => setLocatie(event.target.value as 'Tilburg' | 'Breda')}
+                  >
+                    <MenuItem value="Tilburg">Tilburg</MenuItem>
+                    <MenuItem value="Breda">Breda</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <FormControlLabel
+                  control={<Checkbox checked={actief} onChange={(event) => setActief(event.target.checked)} />}
+                  label="Actief"
+                  sx={{ height: '100%', m: 0 }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Button type="submit" variant="contained">
+                  Opslaan
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </CardContent>
+      </Card>
+    </Stack>
   )
 }
 

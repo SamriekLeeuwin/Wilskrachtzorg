@@ -1,6 +1,33 @@
 import { useMemo } from 'react'
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
+import {
+  Card,
+  CardContent,
+  Grid,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
 
 type PhaseData = {
   name: string
@@ -79,140 +106,121 @@ function FaseOverzichtPage() {
   }, [])
 
   return (
-    <div className="page-stack">
-      <section className="card">
-        <h2 className="card-title" style={{ fontSize: 22 }}>
-          Fase Overzicht KPI's
-        </h2>
-        <div className="kpi-grid" style={{ marginTop: 16 }}>
-          <div className="kpi-card">
-            <div className="kpi-label">Actieve Jongeren</div>
-            <div className="kpi-value" style={{ color: 'var(--color-primary)', fontSize: 28 }}>
-              {totals.activeTotal}
-            </div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">Afgeronde Fases</div>
-            <div className="kpi-value" style={{ color: '#059669' }}>
-              {totals.completedTotal}
-            </div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">Totale Incidenten</div>
-            <div className="kpi-value" style={{ color: '#dc2626' }}>
-              {totals.totalIncidents}
-            </div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">Gem. Succesrate</div>
-            <div className="kpi-value" style={{ color: 'var(--color-secondary)' }}>
-              {totals.avgSucces}%
-            </div>
-          </div>
-        </div>
-      </section>
+    <Stack spacing={2.5}>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 700, mb: 1.5 }}>
+            Fase Overzicht KPI's
+          </Typography>
+          <Grid container spacing={1.25}>
+            <Grid size={{ xs: 6, md: 3 }}><Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Actieve Jongeren</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: 'primary.main' }}>{totals.activeTotal}</Typography></CardContent></Card></Grid>
+            <Grid size={{ xs: 6, md: 3 }}><Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Afgeronde Fases</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: '#059669' }}>{totals.completedTotal}</Typography></CardContent></Card></Grid>
+            <Grid size={{ xs: 6, md: 3 }}><Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Totale Incidenten</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: '#dc2626' }}>{totals.totalIncidents}</Typography></CardContent></Card></Grid>
+            <Grid size={{ xs: 6, md: 3 }}><Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Gem. Succesrate</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: 'secondary.main' }}>{totals.avgSucces}%</Typography></CardContent></Card></Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-      <section className="two-col">
-        <div className="card">
-          <h3 className="card-title">Jongeren per Fase</h3>
+      <Grid container spacing={1.5}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1 }}>Jongeren per Fase</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={youthPerPhase} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="2 8" stroke="#e9eef5" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }} labelStyle={{ color: '#334155', fontWeight: 600 }} />
+                  <Legend iconType="circle" />
+                  <Bar dataKey="active" fill="#07346a" radius={[8, 8, 0, 0]} name="Actief" />
+                  <Bar dataKey="completed" fill="#059669" radius={[8, 8, 0, 0]} name="Afgerond" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1 }}>Incidenten per Fase</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={incidentTrend} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="2 8" stroke="#e9eef5" />
+                  <XAxis dataKey="phase" tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }} labelStyle={{ color: '#334155', fontWeight: 600 }} />
+                  <Line type="monotone" dataKey="incidents" stroke="#1d4ed8" strokeWidth={3.5} dot={{ r: 3, fill: '#1d4ed8', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1 }}>Succesrate per Fase (%)</Typography>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={youthPerPhase} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="2 8" stroke="#e9eef5" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }}
-                labelStyle={{ color: '#334155', fontWeight: 600 }}
-              />
-              <Legend iconType="circle" wrapperStyle={{ color: '#64748b' }} />
-              <Bar dataKey="active" fill="#07346a" radius={[8, 8, 0, 0]} name="Actief" />
-              <Bar dataKey="completed" fill="#059669" radius={[8, 8, 0, 0]} name="Afgerond" />
-            </BarChart>
+            <PieChart>
+              <Pie
+                data={successRatio}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={(props: PieLabelRenderProps) => `${props.name}: ${props.value}%`}
+                outerRadius={100}
+                innerRadius={54}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {COLORS.map((color, index) => (
+                  <Cell key={`cell-${index}`} fill={color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }} />
+            </PieChart>
           </ResponsiveContainer>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="card">
-          <h3 className="card-title">Incidenten per Fase</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={incidentTrend} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="2 8" stroke="#e9eef5" />
-              <XAxis dataKey="phase" tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#8a93a3' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }}
-                labelStyle={{ color: '#334155', fontWeight: 600 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="incidents"
-                stroke="#1d4ed8"
-                strokeWidth={3.5}
-                dot={{ r: 3, fill: '#1d4ed8', strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      <section className="card">
-        <h3 className="card-title">Succesrate per Fase (%)</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={successRatio}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={(props: PieLabelRenderProps) => `${props.name}: ${props.value}%`}
-              outerRadius={100}
-              innerRadius={54}
-              paddingAngle={2}
-              dataKey="value"
-            >
-              {COLORS.map((color, index) => (
-                <Cell key={`cell-${index}`} fill={color} />
-              ))}
-            </Pie>
-            <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb' }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </section>
-
-      <section className="card">
-        <h3 className="card-title">Fase Details</h3>
-        <div className="ui-table-wrap" style={{ marginTop: 12 }}>
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Fase</th>
-                <th>Actief</th>
-                <th>Afgerond</th>
-                <th>Incidenten</th>
-                <th>Succesrate</th>
-                <th>Gem. Duur (dagen)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockPhaseData.map((phase) => (
-                <tr key={phase.order}>
-                  <td>{phase.name}</td>
-                  <td>{phase.activeYouth}</td>
-                  <td>{phase.completedYouth}</td>
-                  <td>{phase.incidentCount}</td>
-                  <td>
-                    <span style={{ color: phase.successRate >= 75 ? '#059669' : '#dc2626', fontWeight: 600 }}>
-                      {phase.successRate}%
-                    </span>
-                  </td>
-                  <td>{phase.avgDuration}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>Fase Details</Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Fase</TableCell>
+                  <TableCell>Actief</TableCell>
+                  <TableCell>Afgerond</TableCell>
+                  <TableCell>Incidenten</TableCell>
+                  <TableCell>Succesrate</TableCell>
+                  <TableCell>Gem. Duur (dagen)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {mockPhaseData.map((phase) => (
+                  <TableRow key={phase.order} hover>
+                    <TableCell>{phase.name}</TableCell>
+                    <TableCell>{phase.activeYouth}</TableCell>
+                    <TableCell>{phase.completedYouth}</TableCell>
+                    <TableCell>{phase.incidentCount}</TableCell>
+                    <TableCell>
+                      <Typography component="span" sx={{ color: phase.successRate >= 75 ? '#059669' : '#dc2626', fontWeight: 600 }}>
+                        {phase.successRate}%
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{phase.avgDuration}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    </Stack>
   )
 }
 

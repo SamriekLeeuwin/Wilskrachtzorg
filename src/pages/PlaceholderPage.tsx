@@ -1,4 +1,19 @@
-import type { CSSProperties } from 'react'
+import {
+  Alert,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
 
 type PlaceholderPageProps = {
   title: string
@@ -6,49 +21,28 @@ type PlaceholderPageProps = {
 }
 
 type InsightCard = {
-  label: string
-  phase: string
-  metricValue: string
-  metricUnit: string
-  trend: string
-  recommendation: string
-  variant?: 'default' | 'warning'
+  title: string
+  metric: string
+  action: string
+  priority?: 'high' | 'default'
 }
 
 const insightCards: InsightCard[] = [
   {
-    label: 'Hoogste druk',
-    phase: 'Stabilisatie',
-    metricValue: '24',
-    metricUnit: 'incidenten',
-    trend: '+4 vs vorige maand',
-    recommendation: 'Extra dagstart-checks per team',
-    variant: 'warning',
+    title: 'Actie nodig · Stabilisatie',
+    metric: '24 incidenten',
+    action: 'Voer extra checks uit in de dagstart en avondoverdracht.',
+    priority: 'high',
   },
   {
-    label: 'Laagste druk',
-    phase: 'Voorbereiding uitstroom',
-    metricValue: '1',
-    metricUnit: 'incident',
-    trend: '-2 vs vorige maand',
-    recommendation: 'Aanpak van deze fase inzetten als referentie',
+    title: 'Laagste druk · Uitstroom',
+    metric: '1 incident',
+    action: 'Gebruik deze aanpak als standaard voor vergelijkbare casussen.',
   },
   {
-    label: 'Trend',
-    phase: 'Fase 3-4',
-    metricValue: '18%',
-    metricUnit: 'daling',
-    trend: 'Incidentlast daalt in latere fases',
-    recommendation: 'Focus op snellere doorstroom uit fase 1',
-  },
-  {
-    label: 'Actie nodig',
-    phase: 'Stabilisatie',
-    metricValue: '2',
-    metricUnit: 'teams prioriteit',
-    trend: 'Ordeverzoeken en ontwijking dominant',
-    recommendation: 'Plan multidisciplinair casusoverleg binnen 48 uur',
-    variant: 'warning',
+    title: 'Trend · Fase 3-4',
+    metric: '18% daling',
+    action: 'Borg de daling met wekelijkse teamreview op risicosignalen.',
   },
 ]
 
@@ -70,155 +64,211 @@ const heatmapRows = [
 
 const maxHeatmapValue = Math.max(...heatmapRows.flatMap((row) => row.values))
 
-function getHeatmapCellStyle(value: number): CSSProperties {
+const getHeatmapCellStyles = (value: number) => {
   if (value === 0) {
     return {
-      background: '#fafcff',
-      color: '#9ca3af',
-      opacity: 0.66,
+      bgcolor: '#f8fafc',
+      color: '#94a3b8',
+      opacity: 0.75,
     }
   }
 
   const ratio = value / maxHeatmapValue
-  const isKey = ratio >= 0.75
-
-  if (isKey) {
+  if (ratio >= 0.75) {
     return {
-      background: '#fee2e2',
+      bgcolor: '#fee2e2',
       color: '#7f1d1d',
-      outline: '2px solid rgba(185, 28, 28, 0.22)',
-      outlineOffset: -2,
+      border: '2px solid rgba(185, 28, 28, 0.24)',
+      fontWeight: 700,
     }
   }
 
   return {
-    background: '#eff6ff',
+    bgcolor: '#eff6ff',
     color: '#334155',
-    opacity: 0.78,
   }
 }
 
 function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
-    <div className="page-stack analytics-page">
-      <section className="card" style={{ padding: 28 }}>
-        <h2 className="card-title" style={{ fontSize: 24 }}>
+    <Stack spacing={2.5}>
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
           {title}
-        </h2>
-        <p className="card-subtitle">{description}</p>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {description}
+        </Typography>
+      </Box>
 
-        <div className="insights-grid" style={{ marginTop: 18 }}>
-          {insightCards.map((insight) => (
-            <article key={insight.label} className="kpi-card insight-dominant">
-              <div className="kpi-label">{insight.label}</div>
-              <div
-                className="insight-phase"
-                style={{
-                  color: insight.variant === 'warning' ? '#b91c1c' : 'var(--color-primary)',
-                  fontSize: '1.25rem',
-                  marginTop: 8,
-                }}
-              >
-                {insight.phase}
-              </div>
-              <div
-                className="kpi-value"
-                style={{
-                  fontSize: '2.6rem',
-                  marginTop: 10,
-                  color: insight.variant === 'warning' ? '#b91c1c' : 'var(--color-text)',
-                }}
-              >
-                {insight.metricValue}
-              </div>
-              <div className="kpi-label" style={{ marginTop: 2, fontSize: '0.7rem' }}>{insight.metricUnit}</div>
-              <div className={insight.variant === 'warning' ? 'kpi-trend trend-negative' : 'kpi-trend'} style={{ fontSize: '0.72rem' }}>
-                {insight.trend}
-              </div>
-              <div className="insight-caption">{insight.recommendation}</div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="kpi-grid">
-        {kpiCards.map((card) => (
-          <article key={card.label} className="kpi-card">
-            <div className="kpi-label">{card.label}</div>
-            <div className="kpi-value">{card.value}</div>
-          </article>
+      <Grid container spacing={1.5}>
+        {insightCards.map((card) => (
+          <Grid key={card.title} size={{ xs: 12, md: card.priority === 'high' ? 6 : 3 }}>
+            <Card
+              elevation={0}
+              sx={{
+                border: card.priority === 'high' ? '2px solid #b91c1c' : '1px solid #e5e7eb',
+                background: card.priority === 'high'
+                  ? 'linear-gradient(150deg, #fff5f5 0%, #fff 45%)'
+                  : '#fff',
+                minHeight: card.priority === 'high' ? 168 : 148,
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: card.priority === 'high' ? '#b91c1c' : '#64748b',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  {card.title}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: card.priority === 'high' ? 34 : 28,
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    color: card.priority === 'high' ? '#b91c1c' : '#0f172a',
+                    mt: 0.5,
+                  }}
+                >
+                  {card.metric}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1.5, color: '#475569' }}>
+                  {card.action}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </section>
+      </Grid>
 
-      <section className="card">
-        <h3 className="card-title">Waar concentreert risico zich?</h3>
-        <div className="ui-table-wrap" style={{ marginTop: 14 }}>
-          <table className="ui-table heatmap-table" style={{ minWidth: 720 }}>
-            <thead>
-              <tr>
-                <th>Fase</th>
-                {heatmapColumns.map((column) => (
-                  <th key={column}>{column}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {heatmapRows.map((row) => (
-                <tr key={row.phase}>
-                  <td>{row.phase}</td>
-                  {row.values.map((value, index) => (
-                    <td key={`${row.phase}-${heatmapColumns[index]}`} style={getHeatmapCellStyle(value)}>
-                      {value}
-                    </td>
+      <Box>
+        <Typography
+          variant="overline"
+          sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}
+        >
+          Overzicht cijfers
+        </Typography>
+        <Grid container spacing={1.25} sx={{ mt: 0.25 }}>
+          {kpiCards.map((card) => (
+            <Grid key={card.label} size={{ xs: 6, md: 3 }}>
+              <Card elevation={0} sx={{ border: '1px solid #e5e7eb', bgcolor: '#fcfdff' }}>
+                <CardContent sx={{ p: 1.75 }}>
+                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                    {card.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: 24, fontWeight: 700, mt: 0.3, color: '#0f172a' }}>
+                    {card.value}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700 }}>
+            Waar concentreert risico zich?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, mb: 1.5 }}>
+            Hoogste risico in Stabilisatie fase
+          </Typography>
+
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, color: '#64748b' }}>Fase</TableCell>
+                  {heatmapColumns.map((column) => (
+                    <TableCell key={column} align="center" sx={{ fontWeight: 700, color: '#64748b' }}>
+                      {column}
+                    </TableCell>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {heatmapRows.map((row) => (
+                  <TableRow key={row.phase} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{row.phase}</TableCell>
+                    {row.values.map((value, idx) => (
+                      <TableCell key={`${row.phase}-${heatmapColumns[idx]}`} align="center">
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            minWidth: 38,
+                            height: 30,
+                            borderRadius: 1,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            ...getHeatmapCellStyles(value),
+                          }}
+                        >
+                          {value}
+                        </Box>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
-      <section className="two-col">
-        <article className="card">
-          <h3 className="card-title">Aanbevolen acties</h3>
-          <div className="stat-list" style={{ marginTop: 14 }}>
-            {[
-              { label: 'Stabilisatie', action: 'Dagelijks monitoren op ordeverzoeken', priority: 'Hoog' },
-              { label: 'Verantwoordelijkheid', action: 'Wekelijkse coaching op ontwijkgedrag', priority: 'Midden' },
-              { label: 'Onafhankelijkheid', action: 'Succesinterventies borgen in teamoverdracht', priority: 'Laag' },
-            ].map((item) => (
-              <div key={item.label} className="stat-row">
-                <div>
-                  <div className="stat-row-label">{item.label}</div>
-                  <div className="stat-row-sub">{item.action}</div>
-                </div>
-                <span className={item.priority === 'Hoog' ? 'badge badge-danger' : item.priority === 'Midden' ? 'badge badge-warning' : 'badge badge-success'}>
-                  {item.priority}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="card">
-          <h3 className="card-title">Beslisfocus deze week</h3>
-          <div className="insight-list" style={{ marginTop: 14 }}>
-            <div className="insight-item">
-              <div>
-                <h4>Capaciteit verschuiven naar fase 1</h4>
-                <p>Daar zit de grootste incidentdruk en hoogste winstpotentie.</p>
-              </div>
-            </div>
-            <div className="insight-item">
-              <div>
-                <h4>Monitor agressie en middelengebruik apart</h4>
-                <p>Deze signalen bepalen de urgentie van casusopvolging.</p>
-              </div>
-            </div>
-          </div>
-        </article>
-      </section>
-    </div>
+      <Grid container spacing={1.5}>
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+                Aanbevolen acties
+              </Typography>
+              <Stack spacing={1}>
+                {[
+                  { phase: 'Stabilisatie', action: 'Voer dagelijks extra checks uit op ordeverzoeken.', priority: 'Hoog' },
+                  { phase: 'Verantwoordelijkheid', action: 'Plan wekelijks coaching op ontwijkgedrag in.', priority: 'Midden' },
+                  { phase: 'Onafhankelijkheid', action: 'Borg succesvolle interventies in teamoverdracht.', priority: 'Laag' },
+                ].map((item) => (
+                  <Box
+                    key={item.phase}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 1,
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 2,
+                      p: 1.25,
+                    }}
+                  >
+                    <Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{item.phase}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.action}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      size="small"
+                      label={item.priority}
+                      color={item.priority === 'Hoog' ? 'error' : item.priority === 'Midden' ? 'warning' : 'success'}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Alert severity="info" sx={{ border: '1px solid #bfdbfe' }}>
+            Richt vandaag capaciteit op Stabilisatie en monitor agressie en middelengebruik apart voor snellere escalatie.
+          </Alert>
+        </Grid>
+      </Grid>
+    </Stack>
   )
 }
 

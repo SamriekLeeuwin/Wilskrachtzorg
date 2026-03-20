@@ -1,5 +1,26 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 
 type JongereRecord = {
   id: string
@@ -91,100 +112,141 @@ function JongerenPage() {
   }
 
   return (
-    <div className="page-stack">
-      <section className="card">
-        <h2 className="card-title" style={{ fontSize: 22 }}>
-          Jongeren Overzicht
-        </h2>
-        <p className="card-subtitle">
-          Zoek en filter op trajectstatus en locatie. Gebruik het formulier om mock-registraties toe te voegen.
-        </p>
+    <Stack spacing={2.5}>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 700 }}>
+            Jongeren Overzicht
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.75 }}>
+            Zoek en filter op trajectstatus en locatie.
+          </Typography>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
-          <input
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Zoek op cliënt-ID of naam"
-            className="ui-input"
-          />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as 'Alle' | 'Actief' | 'Afgerond')}
-            className="ui-select"
-          >
-            <option value="Alle">Alle statussen</option>
-            <option value="Actief">Actief</option>
-            <option value="Afgerond">Afgerond</option>
-          </select>
-          <select
-            value={locatieFilter}
-            onChange={(event) => setLocatieFilter(event.target.value as 'Alle' | 'Tilburg' | 'Breda')}
-            className="ui-select"
-          >
-            <option value="Alle">Alle locaties</option>
-            <option value="Tilburg">Tilburg</option>
-            <option value="Breda">Breda</option>
-          </select>
-        </div>
+          <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
+            <Grid size={{ xs: 12, md: 5 }}>
+              <TextField
+                size="small"
+                fullWidth
+                label="Zoek op client-ID of naam"
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 3.5 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="status-filter-label">Status</InputLabel>
+                <Select
+                  labelId="status-filter-label"
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(event) => setStatusFilter(event.target.value as 'Alle' | 'Actief' | 'Afgerond')}
+                >
+                  <MenuItem value="Alle">Alle statussen</MenuItem>
+                  <MenuItem value="Actief">Actief</MenuItem>
+                  <MenuItem value="Afgerond">Afgerond</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 3.5 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="locatie-filter-label">Locatie</InputLabel>
+                <Select
+                  labelId="locatie-filter-label"
+                  value={locatieFilter}
+                  label="Locatie"
+                  onChange={(event) => setLocatieFilter(event.target.value as 'Alle' | 'Tilburg' | 'Breda')}
+                >
+                  <MenuItem value="Alle">Alle locaties</MenuItem>
+                  <MenuItem value="Tilburg">Tilburg</MenuItem>
+                  <MenuItem value="Breda">Breda</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
 
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Naam</th>
-              <th>Startdatum</th>
-              <th>Einddatum</th>
-              <th>Locatie</th>
-              <th>Begeleider</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{row.naam}</td>
-                <td>{row.startdatum}</td>
-                <td>{row.einddatum || '-'}</td>
-                <td>{row.locatie}</td>
-                <td>{row.begeleider}</td>
-                <td>
-                  <span
-                    className={row.trajectStatus === 'Actief' ? 'badge badge-warning' : 'badge badge-success'}
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Naam</TableCell>
+                  <TableCell>Startdatum</TableCell>
+                  <TableCell>Einddatum</TableCell>
+                  <TableCell>Locatie</TableCell>
+                  <TableCell>Begeleider</TableCell>
+                  <TableCell>Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRows.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.naam}</TableCell>
+                    <TableCell>{row.startdatum}</TableCell>
+                    <TableCell>{row.einddatum || '-'}</TableCell>
+                    <TableCell>{row.locatie}</TableCell>
+                    <TableCell>{row.begeleider}</TableCell>
+                    <TableCell>
+                      <Chip size="small" label={row.trajectStatus} color={row.trajectStatus === 'Actief' ? 'warning' : 'success'} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+            Nieuwe jongere toevoegen
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Grid container spacing={1.25}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" fullWidth label="Naam" value={naam} onChange={(event) => setNaam(event.target.value)} required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" fullWidth type="date" label="Startdatum" value={startdatum} onChange={(event) => setStartdatum(event.target.value)} InputLabelProps={{ shrink: true }} required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" fullWidth type="date" label="Einddatum" value={einddatum} onChange={(event) => setEinddatum(event.target.value)} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="locatie-input-label">Locatie</InputLabel>
+                  <Select labelId="locatie-input-label" value={locatie} label="Locatie" onChange={(event) => setLocatie(event.target.value as 'Tilburg' | 'Breda')}>
+                    <MenuItem value="Tilburg">Tilburg</MenuItem>
+                    <MenuItem value="Breda">Breda</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" fullWidth label="Begeleider" value={begeleider} onChange={(event) => setBegeleider(event.target.value)} required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="status-input-label">Trajectstatus</InputLabel>
+                  <Select
+                    labelId="status-input-label"
+                    value={trajectStatus}
+                    label="Trajectstatus"
+                    onChange={(event) => setTrajectStatus(event.target.value as 'Actief' | 'Afgerond')}
                   >
-                    {row.trajectStatus}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="card">
-        <h3 className="card-title">Nieuwe jongere toevoegen (mock)</h3>
-        <form onSubmit={handleSubmit} style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-          <input value={naam} onChange={(event) => setNaam(event.target.value)} placeholder="Naam" className="ui-input" required />
-          <input value={startdatum} onChange={(event) => setStartdatum(event.target.value)} type="date" className="ui-input" required />
-          <input value={einddatum} onChange={(event) => setEinddatum(event.target.value)} type="date" className="ui-input" />
-          <select value={locatie} onChange={(event) => setLocatie(event.target.value as 'Tilburg' | 'Breda')} className="ui-select">
-            <option value="Tilburg">Tilburg</option>
-            <option value="Breda">Breda</option>
-          </select>
-          <input value={begeleider} onChange={(event) => setBegeleider(event.target.value)} placeholder="Begeleider" className="ui-input" required />
-          <select value={trajectStatus} onChange={(event) => setTrajectStatus(event.target.value as 'Actief' | 'Afgerond')} className="ui-select">
-            <option value="Actief">Actief</option>
-            <option value="Afgerond">Afgerond</option>
-          </select>
-
-          <button type="submit" className="ui-button" style={{ width: 'fit-content' }}>
-            Opslaan
-          </button>
-        </form>
-      </section>
-    </div>
+                    <MenuItem value="Actief">Actief</MenuItem>
+                    <MenuItem value="Afgerond">Afgerond</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Button type="submit" variant="contained">Opslaan</Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </CardContent>
+      </Card>
+    </Stack>
   )
 }
 

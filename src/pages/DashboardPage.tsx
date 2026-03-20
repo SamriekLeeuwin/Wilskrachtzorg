@@ -1,3 +1,19 @@
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
+
 type KpiItem = {
   title: string
   value: string
@@ -45,101 +61,122 @@ const outflowRows = [
 
 function DashboardPage() {
   return (
-    <div className="page-stack">
-      <section className="kpi-grid">
+    <Stack spacing={2.5}>
+      <Grid container spacing={1.25}>
         {kpis.map((kpi) => (
-          <article key={kpi.title} className="kpi-card">
-            <div className="kpi-label">{kpi.title}</div>
-            <div className="kpi-value">{kpi.value}</div>
-            <div className={`kpi-trend ${kpi.trend === 'positive' ? 'trend-positive' : 'trend-negative'}`}>{kpi.delta}</div>
-          </article>
-        ))}
-      </section>
-
-      <section className="two-col">
-        <article className="card">
-          <h3 className="card-title">Succestrend per jaar</h3>
-          <div style={{ marginTop: 14 }}>
-            {trendData.map((point) => (
-              <div key={point.year} style={{ marginBottom: 10 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: 14,
-                    color: '#4b5563',
-                    marginBottom: 4,
-                  }}
+          <Grid key={kpi.title} size={{ xs: 6, md: 3 }}>
+            <Card elevation={0} sx={{ border: '1px solid #e5e7eb', bgcolor: '#fff' }}>
+              <CardContent sx={{ p: 1.75 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                  {kpi.title}
+                </Typography>
+                <Typography sx={{ fontSize: 24, fontWeight: 700, mt: 0.3 }}>{kpi.value}</Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ color: kpi.trend === 'positive' ? '#059669' : '#dc2626', fontWeight: 600 }}
                 >
-                  <span>{point.year}</span>
-                  <span>{point.value}%</span>
-                </div>
-                <div style={{ height: 9, borderRadius: 999, background: '#eef2f7', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${point.value}%`,
-                      background: 'var(--color-primary)',
-                      height: '100%',
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
+                  {kpi.delta}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-        <article className="card">
-          <h3 className="card-title">Verdeling woonstatus</h3>
-          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
-            {[
-              { label: 'Studio', value: 42 },
-              { label: 'Kamer', value: 24 },
-              { label: 'Terug naar ouders', value: 20 },
-              { label: 'Crisisopvang', value: 14 },
-            ].map((item) => (
-              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-                <span style={{ color: '#374151' }}>{item.label}</span>
-                <strong style={{ color: '#111827' }}>{item.value}%</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
+      <Grid container spacing={1.5}>
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+                Succestrend per jaar
+              </Typography>
+              <Stack spacing={1.1}>
+                {trendData.map((point) => (
+                  <Box key={point.year}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {point.year}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {point.value}%
+                      </Typography>
+                    </Box>
+                    <Box sx={{ height: 8, borderRadius: 999, bgcolor: '#eef2f7', overflow: 'hidden' }}>
+                      <Box sx={{ width: `${point.value}%`, height: '100%', bgcolor: 'primary.main' }} />
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      <section className="card">
-        <h3 className="card-title">Recente uitstroomregistraties</h3>
-        <div className="ui-table-wrap" style={{ marginTop: 12 }}>
-          <table className="ui-table">
-          <thead>
-            <tr>
-              <th>Jongere</th>
-              <th>Locatie</th>
-              <th>Begeleider</th>
-              <th>Woonstatus</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {outflowRows.map((row) => (
-              <tr key={row.jongere}>
-                <td>{row.jongere}</td>
-                <td>{row.locatie}</td>
-                <td>{row.begeleider}</td>
-                <td>{row.woonstatus}</td>
-                <td>
-                  <span
-                    className={row.status === 'Succesvol' ? 'badge badge-success' : 'badge badge-warning'}
-                  >
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+                Verdeling woonstatus
+              </Typography>
+              <Stack spacing={0.9}>
+                {[
+                  { label: 'Studio', value: 42 },
+                  { label: 'Kamer', value: 24 },
+                  { label: 'Terug naar ouders', value: 20 },
+                  { label: 'Crisisopvang', value: 14 },
+                ].map((item) => (
+                  <Box key={item.label} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.label}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {item.value}%
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+            Recente uitstroomregistraties
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Jongere</TableCell>
+                  <TableCell>Locatie</TableCell>
+                  <TableCell>Begeleider</TableCell>
+                  <TableCell>Woonstatus</TableCell>
+                  <TableCell>Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {outflowRows.map((row) => (
+                  <TableRow key={row.jongere} hover>
+                    <TableCell>{row.jongere}</TableCell>
+                    <TableCell>{row.locatie}</TableCell>
+                    <TableCell>{row.begeleider}</TableCell>
+                    <TableCell>{row.woonstatus}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={row.status}
+                        color={row.status === 'Succesvol' ? 'success' : 'warning'}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+    </Stack>
   )
 }
 

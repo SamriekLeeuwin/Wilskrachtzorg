@@ -40,6 +40,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 1000;
+  background: #0b3a76;
+  color: #ffffff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
 .dashboard-shell {
   display: flex;
   min-height: 100vh;
@@ -154,6 +172,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.sidebar-toggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #dbe4f0;
+  background: #ffffff;
+  color: #1e293b;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sidebar-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-overlay {
+  display: none;
 }
 
 .dashboard-title {
@@ -595,8 +636,17 @@ body {
 
 @media (max-width: 860px) {
   .dashboard-sidebar {
-    position: static;
-    width: 100%;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(82vw, 320px);
+    z-index: 30;
+    transform: translateX(-102%);
+    transition: transform 220ms ease;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.28);
+  }
+
+  .dashboard-sidebar.open {
+    transform: translateX(0);
   }
 
   .dashboard-main {
@@ -618,8 +668,35 @@ body {
     width: calc(100% - 28px);
   }
 
+  .sidebar-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
   .dashboard-title {
-    font-size: 1.6rem;
+    font-size: 1.35rem;
+  }
+
+  .dashboard-user {
+    font-size: 0.82rem;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: none;
+    background: rgba(2, 6, 23, 0.42);
+    z-index: 20;
+    cursor: pointer;
+  }
+
+  .dashboard-header-inner {
+    justify-content: flex-start;
+  }
+
+  .dashboard-header-inner .dashboard-title {
+    flex: 1;
   }
 
   .card {

@@ -1,4 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+} from '@mui/material'
 
 type TimelineEvent = {
   type: 'phase' | 'incident'
@@ -142,10 +155,7 @@ const mockYouthTimelines: YouthTimeline[] = [
 function JongereTimelinePage() {
   const [selectedYouthId, setSelectedYouthId] = useState('Y-001')
 
-  const selectedYouth = useMemo(
-    () => mockYouthTimelines.find((y) => y.id === selectedYouthId),
-    [selectedYouthId]
-  )
+  const selectedYouth = useMemo(() => mockYouthTimelines.find((y) => y.id === selectedYouthId), [selectedYouthId])
 
   const sortedEvents = useMemo(
     () => (selectedYouth ? [...selectedYouth.events].sort((a, b) => a.date.getTime() - b.date.getTime()) : []),
@@ -156,89 +166,77 @@ function JongereTimelinePage() {
   const phaseCount = useMemo(() => sortedEvents.filter((e) => e.type === 'phase').length, [sortedEvents])
 
   return (
-    <div className="page-stack">
-      <section className="card">
-        <h2 className="card-title" style={{ fontSize: 22 }}>
-          Jongere Ontwikkel Timeline
-        </h2>
-        <p className="card-subtitle">
-          Visualisatie van faseprogressie en incidenten chronologisch per jongere.
-        </p>
+    <Stack spacing={2.5}>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 700 }}>
+            Jongere Ontwikkel Timeline
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.75 }}>
+            Visualisatie van faseprogressie en incidenten chronologisch per jongere.
+          </Typography>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, color: '#7b8494', marginBottom: 8 }}>Selecteer jongere</label>
-          <select value={selectedYouthId} onChange={(e) => setSelectedYouthId(e.target.value)} className="ui-select" style={{ maxWidth: 320 }}>
-            {mockYouthTimelines.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <FormControl size="small" sx={{ minWidth: 280, mb: 1.5 }}>
+            <InputLabel id="jongere-select-label">Selecteer jongere</InputLabel>
+            <Select labelId="jongere-select-label" value={selectedYouthId} label="Selecteer jongere" onChange={(e) => setSelectedYouthId(e.target.value)}>
+              {mockYouthTimelines.map((y) => (
+                <MenuItem key={y.id} value={y.id}>{y.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-        {selectedYouth && (
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-            <div className="kpi-card">
-              <div className="kpi-label">Fasen doorlopen</div>
-              <div className="kpi-value" style={{ color: 'var(--color-primary)' }}>
-                {phaseCount}
-              </div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">Incidenten geregistreerd</div>
-              <div className="kpi-value" style={{ color: '#dc2626' }}>
-                {incidentCount}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
+          {selectedYouth && (
+            <Grid container spacing={1.25}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Fasen doorlopen</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: 'primary.main' }}>{phaseCount}</Typography></CardContent></Card>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Card variant="outlined"><CardContent sx={{ p: 1.5 }}><Typography variant="caption">Incidenten geregistreerd</Typography><Typography sx={{ fontSize: 26, fontWeight: 700, color: '#dc2626' }}>{incidentCount}</Typography></CardContent></Card>
+              </Grid>
+            </Grid>
+          )}
+        </CardContent>
+      </Card>
 
       {selectedYouth && (
-        <section className="card">
-          <h3 className="card-title" style={{ marginBottom: 12 }}>
-            Tijdlijn: {selectedYouth.name}
-          </h3>
+        <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+              Tijdlijn: {selectedYouth.name}
+            </Typography>
 
-          <div className="timeline-list">
-            {sortedEvents.map((event, index) => (
-              <div key={index} className="timeline-item">
-                <div
-                  className="timeline-dot"
-                  style={{
-                    backgroundColor: event.color,
-                    width: event.type === 'incident' ? 10 : 14,
-                    height: event.type === 'incident' ? 10 : 14,
+            <Stack spacing={1.25}>
+              {sortedEvents.map((event, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    border: '1px solid #e5e7eb',
+                    borderLeft: `4px solid ${event.color}`,
+                    borderRadius: 2,
+                    p: 1.25,
+                    bgcolor: '#fbfcff',
                   }}
-                />
-
-                <div className="timeline-panel">
-                  <div className="timeline-meta">
-                    <h4 className="timeline-title">{event.title}</h4>
-                    <span className="timeline-date">{event.date.toLocaleDateString('nl-NL')}</span>
-                  </div>
-                  <p className="timeline-description">{event.description}</p>
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.3 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{event.title}</Typography>
+                    <Typography variant="caption" color="text.secondary">{event.date.toLocaleDateString('nl-NL')}</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">{event.description}</Typography>
                   {event.severity && (
-                    <span
-                      className={`badge ${
-                        event.severity === 'high'
-                          ? 'badge-danger'
-                          : event.severity === 'medium'
-                            ? 'badge-warning'
-                            : 'badge-success'
-                      }`}
-                      style={{ marginTop: 8 }}
-                    >
-                      {event.severity === 'high' ? 'Hoog' : event.severity === 'medium' ? 'Gemiddeld' : 'Laag'}
-                    </span>
+                    <Chip
+                      sx={{ mt: 1 }}
+                      size="small"
+                      label={event.severity === 'high' ? 'Hoog' : event.severity === 'medium' ? 'Gemiddeld' : 'Laag'}
+                      color={event.severity === 'high' ? 'error' : event.severity === 'medium' ? 'warning' : 'success'}
+                    />
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
       )}
-    </div>
+    </Stack>
   )
 }
 

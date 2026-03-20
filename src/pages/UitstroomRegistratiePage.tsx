@@ -1,5 +1,28 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  Chip,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
 
 type UitstroomRecord = {
   id: string
@@ -100,128 +123,145 @@ function UitstroomRegistratiePage() {
   }
 
   return (
-    <div className="page-stack">
-      <section className="card">
-        <h2 className="card-title" style={{ fontSize: 22 }}>
-          Uitstroom Registraties
-        </h2>
-        <p className="card-subtitle">
-          Bekijk registraties en filter op jaar en resultaatstatus.
-        </p>
+    <Stack spacing={2.5}>
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 700 }}>
+            Uitstroom Registraties
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1.75 }}>
+            Bekijk registraties en filter op jaar en resultaatstatus.
+          </Typography>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-          <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value as 'Alle' | '2025' | '2024')} className="ui-select">
-            <option value="Alle">Alle jaren</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-          </select>
-          <select
-            value={succesFilter}
-            onChange={(event) => setSuccesFilter(event.target.value as 'Alle' | 'Succesvol' | 'Niet succesvol')}
-            className="ui-select"
-          >
-            <option value="Alle">Alle resultaten</option>
-            <option value="Succesvol">Succesvol</option>
-            <option value="Niet succesvol">Niet succesvol</option>
-          </select>
-        </div>
+          <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="jaar-filter-label">Jaar</InputLabel>
+                <Select labelId="jaar-filter-label" value={yearFilter} label="Jaar" onChange={(event) => setYearFilter(event.target.value as 'Alle' | '2025' | '2024')}>
+                  <MenuItem value="Alle">Alle jaren</MenuItem>
+                  <MenuItem value="2025">2025</MenuItem>
+                  <MenuItem value="2024">2024</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="resultaat-filter-label">Resultaat</InputLabel>
+                <Select
+                  labelId="resultaat-filter-label"
+                  value={succesFilter}
+                  label="Resultaat"
+                  onChange={(event) => setSuccesFilter(event.target.value as 'Alle' | 'Succesvol' | 'Niet succesvol')}
+                >
+                  <MenuItem value="Alle">Alle resultaten</MenuItem>
+                  <MenuItem value="Succesvol">Succesvol</MenuItem>
+                  <MenuItem value="Niet succesvol">Niet succesvol</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
 
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Jongere</th>
-              <th>Datum</th>
-              <th>Reden</th>
-              <th>Doorverwezen</th>
-              <th>Organisatie</th>
-              <th>Woonstatus</th>
-              <th>Werk/School</th>
-              <th>Resultaat</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{row.jongere}</td>
-                <td>{row.datum}</td>
-                <td>{row.reden}</td>
-                <td>{row.doorverwezen ? 'Ja' : 'Nee'}</td>
-                <td>{row.organisatie}</td>
-                <td>{row.woonstatus}</td>
-                <td>
-                  {row.werk ? 'Werk' : ''}
-                  {row.werk && row.school ? ' / ' : ''}
-                  {row.school ? 'School' : ''}
-                  {!row.werk && !row.school ? '-' : ''}
-                </td>
-                <td>
-                  <span className={row.succesvol ? 'badge badge-success' : 'badge badge-warning'}>
-                    {row.succesvol ? 'Succesvol' : 'Niet succesvol'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          </table>
-        </div>
-      </section>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Jongere</TableCell>
+                  <TableCell>Datum</TableCell>
+                  <TableCell>Reden</TableCell>
+                  <TableCell>Doorverwezen</TableCell>
+                  <TableCell>Organisatie</TableCell>
+                  <TableCell>Woonstatus</TableCell>
+                  <TableCell>Werk/School</TableCell>
+                  <TableCell>Resultaat</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRows.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.jongere}</TableCell>
+                    <TableCell>{row.datum}</TableCell>
+                    <TableCell>{row.reden}</TableCell>
+                    <TableCell>{row.doorverwezen ? 'Ja' : 'Nee'}</TableCell>
+                    <TableCell>{row.organisatie}</TableCell>
+                    <TableCell>{row.woonstatus}</TableCell>
+                    <TableCell>
+                      {row.werk ? 'Werk' : ''}
+                      {row.werk && row.school ? ' / ' : ''}
+                      {row.school ? 'School' : ''}
+                      {!row.werk && !row.school ? '-' : ''}
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="small" label={row.succesvol ? 'Succesvol' : 'Niet succesvol'} color={row.succesvol ? 'success' : 'warning'} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <h3 className="card-title">Nieuwe uitstroom registreren (mock)</h3>
-        <form onSubmit={handleSubmit} style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-          <input value={jongere} onChange={(event) => setJongere(event.target.value)} placeholder="Jongere (Client-ID)" className="ui-input" required />
-          <input value={datum} onChange={(event) => setDatum(event.target.value)} type="date" className="ui-input" required />
-          <input value={reden} onChange={(event) => setReden(event.target.value)} placeholder="Reden uitstroom" className="ui-input" required />
+      <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 2 }}>
+          <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
+            Nieuwe uitstroom registreren
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Grid container spacing={1.25}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" label="Jongere (Client-ID)" value={jongere} onChange={(event) => setJongere(event.target.value)} fullWidth required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" type="date" label="Datum" value={datum} onChange={(event) => setDatum(event.target.value)} InputLabelProps={{ shrink: true }} fullWidth required />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" label="Reden uitstroom" value={reden} onChange={(event) => setReden(event.target.value)} fullWidth required />
+              </Grid>
 
-          <select
-            value={woonstatus}
-            onChange={(event) => setWoonstatus(event.target.value as UitstroomRecord['woonstatus'])}
-            className="ui-select"
-          >
-            <option value="Studio">Studio</option>
-            <option value="Kamer">Kamer</option>
-            <option value="Ouders">Ouders</option>
-            <option value="Crisisopvang">Crisisopvang</option>
-            <option value="Onbekend">Onbekend</option>
-          </select>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="woonstatus-input-label">Woonstatus</InputLabel>
+                  <Select
+                    labelId="woonstatus-input-label"
+                    value={woonstatus}
+                    label="Woonstatus"
+                    onChange={(event) => setWoonstatus(event.target.value as UitstroomRecord['woonstatus'])}
+                  >
+                    <MenuItem value="Studio">Studio</MenuItem>
+                    <MenuItem value="Kamer">Kamer</MenuItem>
+                    <MenuItem value="Ouders">Ouders</MenuItem>
+                    <MenuItem value="Crisisopvang">Crisisopvang</MenuItem>
+                    <MenuItem value="Onbekend">Onbekend</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControlLabel control={<Checkbox checked={doorverwezen} onChange={(event) => setDoorverwezen(event.target.checked)} />} label="Doorverwezen" sx={{ m: 0 }} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField size="small" label="Doorverwijsorganisatie" value={organisatie} onChange={(event) => setOrganisatie(event.target.value)} fullWidth disabled={!doorverwezen} />
+              </Grid>
 
-          <label className="ui-select" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={doorverwezen} onChange={(event) => setDoorverwezen(event.target.checked)} />
-            Doorverwezen
-          </label>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControlLabel control={<Checkbox checked={werk} onChange={(event) => setWerk(event.target.checked)} />} label="Werk" sx={{ m: 0 }} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControlLabel control={<Checkbox checked={school} onChange={(event) => setSchool(event.target.checked)} />} label="School" sx={{ m: 0 }} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <FormControlLabel control={<Checkbox checked={succesvol} onChange={(event) => setSuccesvol(event.target.checked)} />} label="Succesvol" sx={{ m: 0 }} />
+              </Grid>
 
-          <input
-            value={organisatie}
-            onChange={(event) => setOrganisatie(event.target.value)}
-            placeholder="Doorverwijsorganisatie"
-            className="ui-input"
-            disabled={!doorverwezen}
-          />
-
-          <label className="ui-select" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={werk} onChange={(event) => setWerk(event.target.checked)} />
-            Werk
-          </label>
-
-          <label className="ui-select" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={school} onChange={(event) => setSchool(event.target.checked)} />
-            School
-          </label>
-
-          <label className="ui-select" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={succesvol} onChange={(event) => setSuccesvol(event.target.checked)} />
-            Succesvol
-          </label>
-
-          <button type="submit" className="ui-button" style={{ width: 'fit-content' }}>
-            Registreren
-          </button>
-        </form>
-      </section>
-    </div>
+              <Grid size={{ xs: 12 }}>
+                <Button type="submit" variant="contained">Registreren</Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </CardContent>
+      </Card>
+    </Stack>
   )
 }
 
