@@ -159,8 +159,11 @@ function DashboardLayout() {
               </IconButton>
             </Tooltip>
           )}
-          <Tooltip title="Prototypeweergave: dit is geen echte aanmelding of autorisatie.">
-          <FormControl size="small" sx={{ minWidth: { xs: 132, md: 190 }, maxWidth: { xs: 150, md: 220 }, mr: { xs: .7, md: 1.5 } }}>
+          <FormControl
+            size="small"
+            title="Prototypeweergave: dit is geen echte aanmelding of autorisatie."
+            sx={{ minWidth: { xs: 132, md: 190 }, maxWidth: { xs: 150, md: 220 }, mr: { xs: .7, md: 1.5 } }}
+          >
             <Select
               value={role}
               onChange={(event) => setRole(event.target.value as WorkspaceRole)}
@@ -170,7 +173,6 @@ function DashboardLayout() {
               {workspaceRoles.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </Select>
           </FormControl>
-          </Tooltip>
           <Chip label="Prototype · peildatum 28 jul 2026" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eff5fb', color: '#41617f', fontSize: 11, border: '1px solid #dae6f0' }} />
         </Toolbar>
       </AppBar>
