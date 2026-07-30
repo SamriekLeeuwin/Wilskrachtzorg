@@ -9,8 +9,11 @@ import KpiCard from '../components/insights/KpiCard'
 import InsightFilters from '../components/insights/InsightFilters'
 import { incidents, type Filters } from '../data/careInsights'
 import { loadTrajectories } from '../data/demoStore'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 function GedragAnalysePage() {
+  const { role } = useWorkspaceRole()
+  const aggregateOnly = role === 'Directie'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const trajectoryByClient = useMemo(() => new Map(loadTrajectories().map((item) => [item.clientCode, item])), [])
   const filtered = useMemo(() => incidents.filter((incident) =>
@@ -25,17 +28,24 @@ function GedragAnalysePage() {
   const heavy = filtered.filter((item) => item.severity === 'Zwaar')
   const recoveryOpen = filtered.filter((item) => item.recoveryRequired && !item.recoveryCompleted)
   const officialWarnings = filtered.filter((item) => item.measure === 'Officiële waarschuwing')
-  const phaseRows = useMemo(() => ['Stabilisatie', 'Verantwoordelijkheid', 'Onafhankelijkheid', 'Voorbereiding uitstroom'].map((phase) => {
-    const rows = filtered.filter((item) => item.phase === phase)
-    return { phase, count: rows.length, heavy: rows.filter((item) => item.severity === 'Zwaar').length, clients: new Set(rows.map((item) => item.clientCode)).size }
+  const locationRows = useMemo(() => ['Tilburg', 'Breda', 'Eindhoven'].map((location) => {
+    const rows = filtered.filter((item) => item.location === location)
+    return {
+      location,
+      count: rows.length,
+      heavy: rows.filter((item) => item.severity === 'Zwaar').length,
+      recoveryOpen: rows.filter((item) => item.recoveryRequired && !item.recoveryCompleted).length,
+      clients: new Set(rows.map((item) => item.clientCode)).size,
+    }
   }), [filtered])
 
   return (
     <Stack spacing={2.5}>
       <Alert severity="info" sx={{ border: '1px solid #cfe0ed', borderRadius: 2.5 }}>
-        <Typography sx={{ fontSize: 12.5, fontWeight: 760 }}>Alleen-lezen managementweergave uit Zilliz</Typography>
-        <Typography sx={{ fontSize: 11 }}>Incidenten worden door begeleiders in Zilliz geregistreerd. Hier worden ze geanalyseerd voor zorgmanager, gedragswetenschapper en directie.</Typography>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 760 }}>Alleen-lezen prototypeweergave van incidentgegevens</Typography>
+        <Typography sx={{ fontSize: 11 }}>Incidentregistratie blijft in het aangewezen bronsysteem. Deze pagina ondersteunt analyse; een productieversie moet bronstatus, synchronisatietijd en formele escalaties aantoonbaar tonen.</Typography>
       </Alert>
+      {role === 'Directie' && <Alert severity="warning">De formele flow voor ernstige of meldplichtige incidenten, directiebesluit en eventuele IGJ-melding is nog niet gekoppeld. Gebruik deze prototypecijfers niet als bewijs dat een melding is beoordeeld of gedaan.</Alert>}
       <InsightFilters value={filters} onChange={setFilters} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
@@ -47,7 +57,7 @@ function GedragAnalysePage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1fr 1fr' }, gap: 2 }}>
         <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
-          <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Verdeling naar gedragscategorie</Typography>
+          <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Incidenten per categorie</Typography>
           <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3, mb: 2 }}>Teller en aandeel reageren op periode en locatie</Typography>
           <Stack spacing={1.55}>{categories.map((category) => (
             <Box key={category.name}>
@@ -61,16 +71,16 @@ function GedragAnalysePage() {
         </Box>
 
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
-          <Box sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Incidentdruk per fase</Typography><Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Helpt bepalen waar extra pedagogische ondersteuning nodig is</Typography></Box>
+          <Box sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Incidenten en herstel per locatie</Typography><Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Locatie is een bevestigd filter; trajectfasen worden niet als incidentcategorie gebruikt</Typography></Box>
           <Divider />
-          <TableContainer><Table size="small"><TableHead><TableRow>{['Fase', 'Incidenten', 'Zwaar', 'Jongeren'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
-            <TableBody>{phaseRows.map((row) => <TableRow key={row.phase}><TableCell sx={{ fontWeight: 700 }}>{row.phase}</TableCell><TableCell>{row.count}</TableCell><TableCell>{row.heavy}</TableCell><TableCell>{row.clients}</TableCell></TableRow>)}</TableBody>
+          <TableContainer><Table size="small"><TableHead><TableRow>{['Locatie', 'Incidenten', 'Zwaar', 'Herstel open', 'Jongeren'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
+            <TableBody>{locationRows.map((row) => <TableRow key={row.location}><TableCell sx={{ fontWeight: 700 }}>{row.location}</TableCell><TableCell>{row.count}</TableCell><TableCell>{row.heavy}</TableCell><TableCell>{row.recoveryOpen}</TableCell><TableCell>{row.clients}</TableCell></TableRow>)}</TableBody>
           </Table></TableContainer>
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
-        <Box sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Zware incidenten en opvolging</Typography><Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Drill-down naar het dossier; bronregistratie blijft in Zilliz</Typography></Box>
+      {!aggregateOnly && <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+        <Box sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Zware incidenten en opvolging</Typography><Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Open het bevoegde dossier voor de inhoudelijke opvolging; bronregistratie blijft in het bronsysteem</Typography></Box>
         <Divider />
         <TableContainer><Table size="small" sx={{ minWidth: 760 }}><TableHead><TableRow>{['Datum', 'Dossier', 'Locatie', 'Categorie', 'Maatregel', 'Herstel'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
           <TableBody>{heavy.map((item) => <TableRow key={item.id} hover>
@@ -80,7 +90,9 @@ function GedragAnalysePage() {
             <TableCell><Chip label={item.recoveryCompleted ? 'Afgerond' : 'Open'} size="small" sx={{ height: 21, fontSize: 10, bgcolor: item.recoveryCompleted ? '#eaf6f1' : '#fff3e5', color: item.recoveryCompleted ? '#28745d' : '#925b1d' }} /></TableCell>
           </TableRow>)}</TableBody>
         </Table></TableContainer>
-      </Box>
+      </Box>}
+
+      {aggregateOnly && <Alert severity="info">De directie ziet hier alleen geaggregeerde patronen. Cliëntniveau is verborgen; operationele opvolging loopt via de gedragswetenschapper en zorgmanager.</Alert>}
 
       <Typography sx={{ fontSize: 10.5, color: '#8a98a6' }}>Bron: fictieve Zilliz-synchronisatie · peildatum 28 juli 2026 · incidentniveau, alleen-lezen.</Typography>
     </Stack>

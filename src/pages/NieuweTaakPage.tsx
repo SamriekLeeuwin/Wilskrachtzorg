@@ -11,6 +11,7 @@ import type { WorkItem } from '../data/careInsights'
 import { workItems } from '../data/careInsights'
 import { loadTrajectories, loadWorkQueue, saveWorkQueue } from '../data/demoStore'
 import { useWorkspaceRole, type WorkspaceRole } from '../context/RoleContext'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
 type TaskType = WorkItem['type']
 type SavedTask = WorkItem & {
@@ -42,17 +43,17 @@ const templates: TaskTemplate[] = [
     policyReason: 'Pedagogisch beleid: bij 3 aantekeningen binnen circa 2–3 weken wordt het netwerk uitgenodigd voor een UVO.',
     expectedResult: 'Het UVO staat gepland, betrokkenen zijn uitgenodigd en het doel van het overleg is vastgelegd.',
     checklist: ['Datum afstemmen', 'Netwerk uitnodigen', 'Aanleiding samenvatten', 'Agendapunten toevoegen'],
-    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Locatieleider'],
+    roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
   },
   {
     type: 'Herstelgesprek',
     label: 'Herstelgesprek',
     description: 'Herstel na incident of maatregel organiseren.',
     title: 'Herstelgesprek voeren en vastleggen',
-    policyReason: 'Pedagogisch beleid: een herstelgesprek is verplicht na een zwaar incident, time-out of officiële waarschuwing.',
+    policyReason: 'Pedagogisch beleid: na ieder incident wordt herstelopvolging beoordeeld en aantoonbaar vastgelegd.',
     expectedResult: 'Het gesprek is gevoerd, afspraken zijn vastgelegd en betrokkenen weten wat de vervolgstap is.',
     checklist: ['Jongere uitnodigen', 'Betrokken medewerker uitnodigen', 'Afspraken vastleggen', 'Vervolg controleren'],
-    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Locatieleider'],
+    roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
   },
   {
     type: 'Vervolgplek',
@@ -62,7 +63,7 @@ const templates: TaskTemplate[] = [
     policyReason: 'Doorstroom: besluit, deelnemers, actiehouder en deadline moeten controleerbaar zijn vastgelegd.',
     expectedResult: 'De volgende stap richting een passende vervolgplek is uitgevoerd en terug te vinden in het dossier.',
     checklist: ['Status aanbieder controleren', 'Benodigde documenten verzamelen', 'Betrokkenen informeren', 'Vervolgdatum vastleggen'],
-    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Zorgmanager', 'Locatieleider'],
+    roles: ['Begeleider', 'Zorgmanager'],
   },
   {
     type: 'Evaluatie',
@@ -72,9 +73,16 @@ const templates: TaskTemplate[] = [
     policyReason: 'Medewerkershandboek: het zorgplan wordt bijgehouden en de zorg wordt periodiek geëvalueerd.',
     expectedResult: 'De voortgang, doelen, besluiten en nieuwe afspraken zijn samen beoordeeld en vastgelegd.',
     checklist: ['Voortgang doelen controleren', 'Jongere betrekken', 'Netwerk of verwijzer uitnodigen', 'Nieuwe afspraken vastleggen'],
-    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Zorgmanager', 'Locatieleider'],
+    roles: ['Begeleider', 'Zorgmanager'],
   },
 ]
+
+const responsibleRolesByType: Record<TaskType, WorkspaceRole[]> = {
+  UVO: ['Gedragswetenschapper', 'Zorgmanager'],
+  Herstelgesprek: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+  Vervolgplek: ['Begeleider', 'Zorgmanager'],
+  Evaluatie: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+}
 
 const addDays = (days: number) => {
   const date = new Date()
@@ -91,13 +99,18 @@ function NieuweTaakPage() {
   const availableTemplates = templates.filter((template) => template.roles.includes(role))
   const requestedType = searchParams.get('type') as TaskType | null
   const firstTemplate = availableTemplates.find((item) => item.type === requestedType) ?? availableTemplates[0]
-  const storedTasks = useMemo(() => loadWorkQueue<SavedTask>(workItems.map((item) => ({
+  const defaultTasks = useMemo(() => workItems.map((item) => ({
     ...item,
     status: 'Open',
     policyReason: templates.find((template) => template.type === item.type)?.policyReason ?? '',
     expectedResult: templates.find((template) => template.type === item.type)?.expectedResult,
     checklist: templates.find((template) => template.type === item.type)?.checklist,
-  }))), [])
+    updatedAt: 'demo-v1',
+  })) as SavedTask[], [])
+  const storedTasks = useMemo(() => loadWorkQueue<SavedTask>(defaultTasks).map((item) => ({
+    ...defaultTasks.find((defaultTask) => defaultTask.id === item.id),
+    ...item,
+  })), [defaultTasks])
   const existingTask = storedTasks.find((item) => item.id === taskId)
   const existingTemplate = availableTemplates.find((item) => item.type === existingTask?.type) ?? firstTemplate
   const [selectedType, setSelectedType] = useState<TaskType>(existingTask?.type ?? firstTemplate.type)
@@ -113,11 +126,20 @@ function NieuweTaakPage() {
   const [urgency, setUrgency] = useState<WorkItem['urgency']>(existingTask?.urgency ?? 'Deze week')
   const [checklist, setChecklist] = useState(existingTask?.checklist ?? existingTemplate.checklist)
   const [submitted, setSubmitted] = useState(false)
+  const [conflictError, setConflictError] = useState('')
 
   const owners = Array.from(new Set(trajectories.map((item) => item.supervisor)))
   const selectedClient = trajectories.find((item) => item.clientCode === clientCode)
   const activeTemplate = templates.find((template) => template.type === selectedType) ?? firstTemplate
-  const isValid = Boolean(clientCode && title.trim() && detail.trim() && expectedResult.trim() && owner && dueDate)
+  const today = new Date().toISOString().slice(0, 10)
+  const isValid = Boolean(clientCode && title.trim() && detail.trim() && expectedResult.trim() && owner && dueDate && dueDate >= today)
+  const taskDirty = existingTask
+    ? selectedType !== existingTask.type || clientCode !== existingTask.clientCode || title !== existingTask.title ||
+      detail !== existingTask.detail || expectedResult !== (existingTask.expectedResult ?? existingTemplate.expectedResult) ||
+      owner !== existingTask.owner || dueDate !== (existingTask.dueDate ?? addDays(1)) ||
+      dueTime !== (existingTask.dueTime ?? '16:00') || JSON.stringify(checklist) !== JSON.stringify(existingTask.checklist ?? existingTemplate.checklist)
+    : Boolean(clientCode || detail.trim() || owner || selectedType !== firstTemplate.type)
+  useUnsavedChangesWarning(taskDirty)
 
   const selectTemplate = (template: TaskTemplate) => {
     setSelectedType(template.type)
@@ -137,12 +159,16 @@ function NieuweTaakPage() {
     setSubmitted(true)
     if (!isValid) return
     const dateLabel = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(`${dueDate}T12:00:00`))
-    const defaults: SavedTask[] = workItems.map((item) => ({
+    const current = loadWorkQueue<SavedTask>(defaultTasks).map((item) => ({
+      ...defaultTasks.find((defaultTask) => defaultTask.id === item.id),
       ...item,
-      status: 'Open',
-      policyReason: templates.find((template) => template.type === item.type)?.policyReason ?? '',
     }))
-    const current = loadWorkQueue<SavedTask>(defaults)
+    const currentExisting = existingTask ? current.find((item) => item.id === existingTask.id) : undefined
+    if (existingTask && (!currentExisting || currentExisting.updatedAt !== existingTask.updatedAt)) {
+      setConflictError('Deze taak is intussen in een andere sessie gewijzigd. Open de taak opnieuw om de actuele versie te controleren.')
+      return
+    }
+    const updatedAt = new Date().toISOString()
     const task: SavedTask = {
       id: existingTask?.id ?? `A-${Date.now()}`,
       clientCode,
@@ -158,9 +184,21 @@ function NieuweTaakPage() {
       urgency,
       checklist,
       status: 'Open',
+      updatedAt,
+      responsibleRoles: existingTask?.responsibleRoles ?? responsibleRolesByType[selectedType],
+      createdByRole: existingTask?.createdByRole ?? role,
     }
     saveWorkQueue(existingTask ? current.map((item) => item.id === existingTask.id ? task : item) : [task, ...current])
     navigate(`/acties?${existingTask ? 'updated' : 'created'}=1`)
+  }
+
+  if (taskId && !existingTask) {
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', py: { xs: 2, md: 5 } }}>
+        <Alert severity="error">Deze taak kon niet worden gevonden. Er is geen nieuwe taak aangemaakt en niets gewijzigd.</Alert>
+        <Button component={RouterLink} to="/acties" startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>Terug naar werkvoorraad</Button>
+      </Stack>
+    )
   }
 
   return (
@@ -175,13 +213,14 @@ function NieuweTaakPage() {
         </Typography>
       </Box>
 
-      {submitted && !isValid && <Alert severity="warning">Vul de gemarkeerde verplichte velden in voordat je de taak opslaat.</Alert>}
+      {submitted && !isValid && <Alert severity="warning">{dueDate && dueDate < today ? 'De deadline mag niet in het verleden liggen.' : 'Vul de gemarkeerde verplichte velden in voordat u de taak opslaat.'}</Alert>}
+      {conflictError && <Alert severity="warning">{conflictError}</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
         <Stack spacing={2.5}>
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
             <Typography sx={{ fontSize: 13.5, fontWeight: 760, color: '#294157' }}>1. Wat moet er gebeuren?</Typography>
-            <Typography sx={{ mt: .3, mb: 1.7, fontSize: 10.5, color: '#8492a2' }}>De suggesties passen bij jouw rol als {role.toLowerCase()}.</Typography>
+            <Typography sx={{ mt: .3, mb: 1.7, fontSize: 10.5, color: '#8492a2' }}>De suggesties passen bij uw rol als {role.toLowerCase()}.</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.2 }}>
               {availableTemplates.map((template) => {
                 const active = selectedType === template.type
@@ -232,7 +271,7 @@ function NieuweTaakPage() {
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
             <Typography sx={{ mb: 1.8, fontSize: 13.5, fontWeight: 760, color: '#294157' }}>3. Wie doet wat en wanneer?</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.8 }}>
-              <TextField select required label="Actiehouder" value={owner} onChange={(event) => setOwner(event.target.value)} error={submitted && !owner}>
+              <TextField select required label="Taakverantwoordelijke" value={owner} onChange={(event) => setOwner(event.target.value)} error={submitted && !owner}>
                 {owners.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
               <TextField required type="date" label="Deadline" value={dueDate} onChange={(event) => setDueDate(event.target.value)} error={submitted && !dueDate} slotProps={{ inputLabel: { shrink: true } }} />
@@ -265,7 +304,7 @@ function NieuweTaakPage() {
           <Stack spacing={1.4} sx={{ mt: 1.8 }}>
             <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>TYPE</Typography><Chip label={selectedType} size="small" sx={{ mt: .5 }} /></Box>
             <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>JONGERE</Typography><Typography sx={{ mt: .25, fontSize: 11 }}>{clientCode || 'Nog niet gekozen'}{selectedClient ? ` · ${selectedClient.location}` : ''}</Typography></Box>
-            <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>ACTIEHOUDER</Typography><Typography sx={{ mt: .25, fontSize: 11 }}>{owner || 'Nog niet gekozen'}</Typography></Box>
+            <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>TAAKVERANTWOORDELIJKE</Typography><Typography sx={{ mt: .25, fontSize: 11 }}>{owner || 'Nog niet gekozen'}</Typography></Box>
             <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>DEADLINE</Typography><Typography sx={{ mt: .25, fontSize: 11 }}>{dueDate || 'Nog niet gekozen'}{dueTime ? ` om ${dueTime}` : ''}</Typography></Box>
             <Box><Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#91a0ad' }}>STAPPEN</Typography><Typography sx={{ mt: .25, fontSize: 11 }}>{checklist.length} voorbereid</Typography></Box>
           </Stack>
@@ -276,7 +315,7 @@ function NieuweTaakPage() {
             </Button>
             <Button fullWidth component={RouterLink} to="/acties">Annuleren</Button>
           </Stack>
-          <Typography sx={{ mt: 1.4, fontSize: 9.7, lineHeight: 1.5, color: '#8a98a5' }}>De taak verschijnt direct in de werkvoorraad van de actiehouder.</Typography>
+          <Typography sx={{ mt: 1.4, fontSize: 9.7, lineHeight: 1.5, color: '#8a98a5' }}>De taak verschijnt in de rolwerkvoorraad met de gekozen taakverantwoordelijke.</Typography>
         </Box>
       </Box>
     </Stack>

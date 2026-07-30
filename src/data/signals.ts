@@ -28,7 +28,7 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
         type: 'Doorstroom',
         title: 'Verwachte einddatum overschreden',
         reason: `Het traject loopt sinds ${new Date(row.startDate).toLocaleDateString('nl-NL')} en is voorbij de verwachte einddatum.`,
-        nextAction: 'Beoordeel stagnatie en leg een nieuw uitstroomscenario met eigenaar vast.',
+        nextAction: 'Beoordeel stagnatie en leg een nieuw uitstroomscenario met taakverantwoordelijke vast.',
         owner: row.supervisor,
         due: 'Vandaag',
         priority: 'Hoog',
@@ -36,18 +36,37 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
       })
     }
 
-    if (row.activeNotes >= 3 && !workItems.some((item) => item.clientCode === row.clientCode && item.type === 'UVO')) {
+    const noteDates = incidents
+      .filter((incident) => incident.clientCode === row.clientCode && incident.measure === 'Aantekening')
+      .map((incident) => incident.date)
+      .sort()
+    const qualifyingWindow = noteDates.findIndex((date, index) =>
+      Boolean(noteDates[index + 2]) &&
+      (new Date(noteDates[index + 2]).getTime() - new Date(date).getTime()) / 86_400_000 <= 21
+    )
+    const firstDate = qualifyingWindow >= 0 ? noteDates[qualifyingWindow] : ''
+    const thirdDate = qualifyingWindow >= 0 ? noteDates[qualifyingWindow + 2] : ''
+    const uvoAlreadyHandled = workItems.some((item) =>
+      item.clientCode === row.clientCode &&
+      item.type === 'UVO' &&
+      (
+        item.status !== 'Afgerond' ||
+        !item.completedAt ||
+        item.completedAt.slice(0, 10) >= thirdDate
+      )
+    )
+    if (row.activeNotes >= 3 && qualifyingWindow >= 0 && !uvoAlreadyHandled) {
       signals.push({
         id: `uvo-${row.clientCode}`,
         clientCode: row.clientCode,
         type: 'Veiligheid',
         title: 'UVO moet worden ingepland',
-        reason: `${row.activeNotes} actieve aantekeningen vragen om overleg met het betrokken netwerk.`,
-        nextAction: 'Maak een UVO-taak, wijs een eigenaar toe en leg deelnemers en datum vast.',
+        reason: `Drie aantekeningen zijn geregistreerd tussen ${new Date(firstDate).toLocaleDateString('nl-NL')} en ${new Date(thirdDate).toLocaleDateString('nl-NL')} (binnen 21 dagen).`,
+        nextAction: 'Maak een UVO-taak, wijs een taakverantwoordelijke toe en leg deelnemers en datum vast.',
         owner: row.supervisor,
         due: 'Vandaag',
         priority: 'Kritiek',
-        source: 'Incidentregistratie + pedagogisch beleid',
+        source: 'Incidentdatums + configureerbare beleidsregel (21 dagen)',
       })
     }
 
@@ -69,7 +88,9 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
 
   const openRecovery = incidents.filter((incident) => incident.recoveryRequired && !incident.recoveryCompleted)
   openRecovery.filter((incident) => !workItems.some((item) =>
-    item.clientCode === incident.clientCode && item.type === 'Herstelgesprek'
+    item.clientCode === incident.clientCode &&
+    item.type === 'Herstelgesprek' &&
+    (item.status !== 'Afgerond' || !item.completedAt || item.completedAt.slice(0, 10) >= incident.date)
   )).forEach((incident) => {
     const trajectory = active.find((row) => row.clientCode === incident.clientCode)
     signals.push({
@@ -86,7 +107,7 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
     })
   })
 
-  workItems.filter((item) => item.type === 'Evaluatie').forEach((item) => {
+  workItems.filter((item) => item.type === 'Evaluatie' && item.status !== 'Afgerond').forEach((item) => {
     signals.push({
       id: `evaluation-${item.id}`,
       clientCode: item.clientCode,

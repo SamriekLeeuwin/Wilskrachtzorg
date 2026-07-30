@@ -9,15 +9,36 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
 import {
-  dataCompleteness, filterTrajectories, formatMonths, getDataQualityIssues, median, monthsBetween, type Filters,
+  dataCompleteness, formatMonths, getDataQualityIssues, median, monthsBetween, type Filters,
 } from '../data/careInsights'
 import { loadTrajectories } from '../data/demoStore'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 function RapportagesPage() {
   const navigate = useNavigate()
+  const { role } = useWorkspaceRole()
+  const canOpenDossiers = role === 'Zorgmanager'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const allTrajectories = useMemo(() => loadTrajectories(), [])
-  const filtered = useMemo(() => filterTrajectories(filters, allTrajectories), [allTrajectories, filters])
+  const period = filters.period === '12m'
+    ? { start: '2025-07-28', end: '2026-07-28', label: 'de laatste 12 maanden' }
+    : filters.period === '2026'
+      ? { start: '2026-01-01', end: '2026-07-28', label: '2026 tot en met de peildatum' }
+      : { start: '2025-01-01', end: '2025-12-31', label: 'kalenderjaar 2025' }
+  const scoped = useMemo(() => allTrajectories.filter((item) =>
+    (filters.location === 'Alle locaties' || item.location === filters.location) &&
+    (filters.origin === 'Alle gemeenten' || item.originMunicipality === filters.origin)
+  ), [allTrajectories, filters.location, filters.origin])
+  const filtered = useMemo(() => scoped.filter((item) =>
+    item.startDate <= period.end && (item.endDate ?? '9999-12-31') >= period.start
+  ), [period.end, period.start, scoped])
+  const exitsInPeriod = useMemo(() => scoped.filter((item) =>
+    Boolean(item.endDate && item.endDate >= period.start && item.endDate <= period.end)
+  ), [period.end, period.start, scoped])
+  const activeAtPeriodEnd = useMemo(() => scoped.filter((item) =>
+    item.startDate <= period.end && (!item.endDate || item.endDate > period.end)
+  ), [period.end, scoped])
+  const placementSnapshotAvailable = period.end === '2026-07-28'
   const completeness = dataCompleteness(filtered)
   const qualityIssues = getDataQualityIssues(filtered)
   const blockingIssues = qualityIssues.filter((issue) => issue.severity === 'Blokkerend').length
@@ -26,9 +47,9 @@ function RapportagesPage() {
     const origins = ['Zaanstad', 'Amsterdam', 'Beverwijk', 'Overig'] as const
     return origins.map((origin) => {
       const rows = filtered.filter((item) => item.originMunicipality === origin)
-      const closed = rows.filter((item) => item.endDate)
+      const closed = rows.filter((item) => item.endDate && item.endDate >= period.start && item.endDate <= period.end)
       const closedDurations = closed.map((item) => monthsBetween(item.startDate, item.endDate!))
-      const active = rows.filter((item) => !item.endDate)
+      const active = rows.filter((item) => item.startDate <= period.end && (!item.endDate || item.endDate > period.end))
       const placementsNeeded = rows.filter((item) => item.followUpPlace !== 'Niet nodig')
       const placementArranged = placementsNeeded.filter((item) => ['Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
       return {
@@ -38,22 +59,25 @@ function RapportagesPage() {
         completed: closed.length,
         average: closedDurations.length ? closedDurations.reduce((sum, value) => sum + value, 0) / closedDurations.length : 0,
         median: median(closedDurations),
-        longStay: rows.filter((item) => monthsBetween(item.startDate, item.endDate ?? '2026-07-28') > 12).length,
-        placementRate: placementsNeeded.length ? Math.round((placementArranged.length / placementsNeeded.length) * 100) : 0,
+        longStay: rows.filter((item) => {
+          const measurementEnd = item.endDate && item.endDate <= period.end ? item.endDate : period.end
+          return item.startDate <= measurementEnd && monthsBetween(item.startDate, measurementEnd) > 12
+        }).length,
+        placementRate: placementSnapshotAvailable && placementsNeeded.length ? Math.round((placementArranged.length / placementsNeeded.length) * 100) : null,
       }
     }).filter((row) => row.total > 0)
-  }, [filtered])
+  }, [filtered, period.end, period.start, placementSnapshotAvailable])
 
-  const closedDurations = filtered.filter((item) => item.endDate).map((item) => monthsBetween(item.startDate, item.endDate!))
-  const active = filtered.filter((item) => !item.endDate)
-  const placementNeeded = filtered.filter((item) => item.followUpPlace !== 'Niet nodig')
+  const closedDurations = exitsInPeriod.map((item) => monthsBetween(item.startDate, item.endDate!))
+  const active = activeAtPeriodEnd
+  const placementNeeded = placementSnapshotAvailable ? activeAtPeriodEnd.filter((item) => item.followUpPlace !== 'Niet nodig') : []
   const placementArranged = placementNeeded.filter((item) => ['Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
 
   const durationBands = [
-    { label: '< 6 mnd', value: filtered.filter((item) => monthsBetween(item.startDate, item.endDate ?? '2026-07-28') < 6).length },
-    { label: '6–9 mnd', value: filtered.filter((item) => { const value = monthsBetween(item.startDate, item.endDate ?? '2026-07-28'); return value >= 6 && value < 9 }).length },
-    { label: '9–12 mnd', value: filtered.filter((item) => { const value = monthsBetween(item.startDate, item.endDate ?? '2026-07-28'); return value >= 9 && value <= 12 }).length },
-    { label: '> 12 mnd', value: filtered.filter((item) => monthsBetween(item.startDate, item.endDate ?? '2026-07-28') > 12).length },
+    { label: '< 6 mnd', value: exitsInPeriod.filter((item) => monthsBetween(item.startDate, item.endDate!) < 6).length },
+    { label: '6–9 mnd', value: exitsInPeriod.filter((item) => { const value = monthsBetween(item.startDate, item.endDate!); return value >= 6 && value < 9 }).length },
+    { label: '9–12 mnd', value: exitsInPeriod.filter((item) => { const value = monthsBetween(item.startDate, item.endDate!); return value >= 9 && value <= 12 }).length },
+    { label: '> 12 mnd', value: exitsInPeriod.filter((item) => monthsBetween(item.startDate, item.endDate!) > 12).length },
   ]
 
   return (
@@ -76,7 +100,7 @@ function RapportagesPage() {
           <Box>
             <Typography sx={{ fontSize: 14, fontWeight: 760, color: '#214969' }}>Wat laat dit overzicht zien?</Typography>
             <Typography sx={{ mt: .35, maxWidth: 760, fontSize: 11.5, lineHeight: 1.55, color: '#567188' }}>
-              Verblijfsduur wordt berekend per afgesloten traject. Voor actieve jongeren tonen we de huidige verblijfsduur apart. Gemeenten worden bepaald op basis van woonplaats vóór instroom.
+              Voor {period.label} tellen we actieve trajecten op het einde van de periode en uitstroom uitsluitend wanneer de uitstroomdatum binnen de periode valt. Verblijfsduur wordt alleen over die uitstroomtrajecten berekend.
             </Typography>
           </Box>
           <Chip label="Prototype · fictieve data" size="small" sx={{ bgcolor: '#fff', color: '#54728b', border: '1px solid #d5e2ec', fontSize: 10.5 }} />
@@ -86,18 +110,18 @@ function RapportagesPage() {
       <InsightFilters value={filters} onChange={setFilters} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        <KpiCard label="Trajecten in selectie" value={String(filtered.length)} context={`${active.length} actief · ${filtered.length - active.length} afgesloten`} icon={<RouteRoundedIcon />} />
-        <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(closedDurations))} context={`Gebaseerd op ${closedDurations.length} afgesloten trajecten`} icon={<AccessTimeRoundedIcon />} tone="green" />
-        <KpiCard label="Langer dan 12 maanden" value={String(filtered.filter((item) => monthsBetween(item.startDate, item.endDate ?? '2026-07-28') > 12).length)} context="Actieve en afgesloten trajecten in selectie" icon={<QueryStatsRoundedIcon />} tone="amber" />
-        <KpiCard label="Vervolgplek geregeld" value={`${placementNeeded.length ? Math.round((placementArranged.length / placementNeeded.length) * 100) : 0}%`} context={`${placementArranged.length} van ${placementNeeded.length} trajecten waarbij een plek nodig is`} icon={<HomeWorkRoundedIcon />} tone="blue" />
+        <KpiCard label="Trajecten in periode" value={String(filtered.length)} context={`${active.length} actief aan periode-einde · ${exitsInPeriod.length} uitgestroomd in periode`} icon={<RouteRoundedIcon />} />
+        <KpiCard label="Mediane verblijfsduur bij uitstroom" value={closedDurations.length ? formatMonths(median(closedDurations)) : '–'} context={`Gebaseerd op ${closedDurations.length} uitstroomtrajecten in de periode`} icon={<AccessTimeRoundedIcon />} tone="green" />
+        <KpiCard label="Langer dan 12 maanden" value={String(originRows.reduce((sum, row) => sum + row.longStay, 0))} context="Gemeten tot uitstroom of einde geselecteerde periode" icon={<QueryStatsRoundedIcon />} tone="amber" />
+        <KpiCard label="Vervolgplek geregeld" value={placementSnapshotAvailable ? `${placementNeeded.length ? Math.round((placementArranged.length / placementNeeded.length) * 100) : 0}%` : '–'} context={placementSnapshotAvailable ? `${placementArranged.length} van ${placementNeeded.length} actieve trajecten waarbij een plek nodig is` : 'Historische vervolgplekstatus is niet beschikbaar in de prototypebron'} icon={<HomeWorkRoundedIcon />} tone="blue" />
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1fr 1fr' }, gap: 2 }}>
         <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Verblijfsduur per herkomstgemeente</Typography>
-          <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Mediaan en gemiddelde van afgesloten trajecten</Typography>
+          <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Mediaan en gemiddelde van trajecten met uitstroom in de geselecteerde periode</Typography>
           <Box sx={{ height: 270, mt: 2 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            {closedDurations.length ? <ResponsiveContainer width="100%" height="100%">
               <BarChart data={originRows} margin={{ top: 8, right: 6, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#edf1f4" />
                 <XAxis dataKey="origin" tick={{ fill: '#708294', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -106,15 +130,15 @@ function RapportagesPage() {
                 <Bar dataKey="median" fill="#2f76ae" radius={[4, 4, 0, 0]} maxBarSize={34} />
                 <Bar dataKey="average" fill="#a8c5db" radius={[4, 4, 0, 0]} maxBarSize={34} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}><Typography sx={{ fontSize: 11, color: '#7c8d9b' }}>Geen uitstroomtrajecten in deze selectie.</Typography></Box>}
           </Box>
         </Box>
 
         <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Verdeling verblijfsduur</Typography>
-          <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Actieve en afgesloten trajecten · peildatum 28 juli 2026</Typography>
+          <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Alleen trajecten met een uitstroomdatum in de geselecteerde periode</Typography>
           <Box sx={{ height: 270, mt: 2 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            {closedDurations.length ? <ResponsiveContainer width="100%" height="100%">
               <BarChart data={durationBands} margin={{ top: 8, right: 6, left: -28, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="#edf1f4" />
                 <XAxis dataKey="label" tick={{ fill: '#708294', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -122,7 +146,7 @@ function RapportagesPage() {
                 <Tooltip cursor={{ fill: '#f7f9fb' }} contentStyle={{ border: '1px solid #dfe6ec', borderRadius: 10, fontSize: 11 }} />
                 <Bar dataKey="value" name="Trajecten" fill="#5c91ba" radius={[5, 5, 0, 0]} maxBarSize={48} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}><Typography sx={{ fontSize: 11, color: '#7c8d9b' }}>Geen verblijfsduurverdeling beschikbaar.</Typography></Box>}
           </Box>
         </Box>
       </Box>
@@ -141,7 +165,14 @@ function RapportagesPage() {
             </TableHead>
             <TableBody>
               {originRows.map((row) => (
-                <TableRow key={row.origin} hover onClick={() => navigate(`/jongeren?origin=${encodeURIComponent(row.origin)}`)} sx={{ cursor: 'pointer' }}>
+                <TableRow
+                  key={row.origin}
+                  hover={canOpenDossiers}
+                  tabIndex={canOpenDossiers ? 0 : undefined}
+                  onClick={canOpenDossiers ? () => navigate(`/jongeren?origin=${encodeURIComponent(row.origin)}`) : undefined}
+                  onKeyDown={canOpenDossiers ? (event) => { if (event.key === 'Enter') navigate(`/jongeren?origin=${encodeURIComponent(row.origin)}`) } : undefined}
+                  sx={canOpenDossiers ? { cursor: 'pointer', '&:focus-visible': { outline: '2px solid #2f76ae', outlineOffset: -2 } } : undefined}
+                >
                   <TableCell sx={{ fontWeight: 700, color: '#274158' }}>{row.origin}</TableCell>
                   <TableCell>{row.total}</TableCell>
                   <TableCell>{row.active}</TableCell>
@@ -149,7 +180,7 @@ function RapportagesPage() {
                   <TableCell>{row.completed ? formatMonths(row.median) : '–'}</TableCell>
                   <TableCell>{row.completed ? formatMonths(row.average) : '–'}</TableCell>
                   <TableCell>{row.longStay}</TableCell>
-                  <TableCell><Chip label={`${row.placementRate}%`} size="small" sx={{ height: 21, bgcolor: row.placementRate >= 75 ? '#eaf6f1' : '#fbf2e7', color: row.placementRate >= 75 ? '#24745d' : '#946020', fontSize: 10 }} /></TableCell>
+                  <TableCell>{row.placementRate === null ? '–' : <Chip label={`${row.placementRate}%`} size="small" sx={{ height: 21, bgcolor: row.placementRate >= 75 ? '#eaf6f1' : '#fbf2e7', color: row.placementRate >= 75 ? '#24745d' : '#946020', fontSize: 10 }} />}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

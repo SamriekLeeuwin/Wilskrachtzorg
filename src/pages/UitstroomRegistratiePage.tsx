@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
-  Avatar, Box, Button, Chip, Divider, FormControl, MenuItem, Select, Stack,
+  Alert, Avatar, Box, Button, Chip, Divider, FormControl, MenuItem, Select, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
-  Dialog, DialogActions, DialogContent, DialogTitle, TextField,
 } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
@@ -13,7 +12,8 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import KpiCard from '../components/insights/KpiCard'
 import { type PlacementConversation } from '../data/careInsights'
-import { loadPlacementConversations, loadTrajectories, savePlacementConversations } from '../data/demoStore'
+import { loadPlacementConversations, loadTrajectories } from '../data/demoStore'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 const statusTone: Record<string, { bg: string; color: string }> = {
   'Nog niet gestart': { bg: '#f1f3f5', color: '#657383' },
@@ -25,46 +25,24 @@ const statusTone: Record<string, { bg: string; color: string }> = {
 
 function UitstroomRegistratiePage() {
   const navigate = useNavigate()
+  const { role } = useWorkspaceRole()
+  const canUpdate = role === 'Zorgmanager'
   const [searchParams, setSearchParams] = useSearchParams()
   const clientFilter = searchParams.get('client')
   const candidates = useMemo(() => loadTrajectories().filter((item) => !item.endDate && item.followUpPlace !== 'Niet nodig'), [])
   const [status, setStatus] = useState('Alle statussen')
-  const [conversations, setConversations] = useState<PlacementConversation[]>(loadPlacementConversations)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [conversation, setConversation] = useState({ clientCode: candidates[0]?.clientCode ?? '', date: '', subject: '', participants: '', decision: '', nextAction: '', owner: '', dueDate: '' })
+  const [conversations] = useState<PlacementConversation[]>(loadPlacementConversations)
   const rows = useMemo(() => candidates.filter((item) =>
     (!clientFilter || item.clientCode === clientFilter) &&
     (status === 'Alle statussen' || item.followUpPlace === status)
   ), [status, candidates, clientFilter])
   const arranged = candidates.filter((item) => item.followUpPlace === 'Definitief akkoord')
   const atRisk = candidates.filter((item) => ['Nog niet gestart', 'Zoeken', 'Wachtlijst'].includes(item.followUpPlace) && item.plannedOutflow && new Date(item.plannedOutflow) < new Date('2026-10-01'))
-  const saveConversation = () => {
-    if (!conversation.clientCode || !conversation.date || !conversation.subject || !conversation.decision || !conversation.nextAction || !conversation.owner || !conversation.dueDate) return
-    setConversations((current) => {
-      const next: PlacementConversation[] = [{
-        id: `G-${String(current.length + 1).padStart(2, '0')}`,
-        clientCode: conversation.clientCode,
-        date: conversation.date,
-        subject: conversation.subject,
-        participants: conversation.participants.split(',').map((item) => item.trim()).filter(Boolean),
-        decision: conversation.decision,
-        nextAction: conversation.nextAction,
-        owner: conversation.owner,
-        dueDate: conversation.dueDate,
-        status: 'Open',
-      }, ...current]
-      savePlacementConversations(next)
-      return next
-    })
-    setDialogOpen(false)
-    setConversation({ clientCode: candidates[0]?.clientCode ?? '', date: '', subject: '', participants: '', decision: '', nextAction: '', owner: '', dueDate: '' })
-  }
-
   return (
     <Stack spacing={2.5}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
         <KpiCard label="Vervolgplek nodig" value={String(candidates.length)} context="Actieve trajecten met uitstroomvoorbereiding" icon={<HomeWorkRoundedIcon />} />
-        <KpiCard label="Definitief geregeld" value={String(arranged.length)} context={`${Math.round((arranged.length / candidates.length) * 100)}% van de benodigde vervolgplekken`} icon={<TaskAltRoundedIcon />} tone="green" />
+        <KpiCard label="Definitief geregeld" value={String(arranged.length)} context={candidates.length ? `${Math.round((arranged.length / candidates.length) * 100)}% van de benodigde vervolgplekken` : 'Geen actieve trajecten met vervolgplekbehoefte'} icon={<TaskAltRoundedIcon />} tone="green" />
         <KpiCard label="Zoeken of wachtlijst" value={String(candidates.length - arranged.length)} context="Nog geen definitief akkoord ontvangen" icon={<PendingActionsRoundedIcon />} tone="amber" />
         <KpiCard label="Risico op vertraging" value={String(atRisk.length)} context="Uitstroom binnen 2 maanden, plek niet definitief" icon={<WarningAmberRoundedIcon />} tone={atRisk.length ? 'red' : 'green'} />
       </Box>
@@ -72,8 +50,8 @@ function UitstroomRegistratiePage() {
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5} sx={{ px: 2.5, py: 2 }}>
           <Box>
-            <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Vervolgplekmonitor</Typography>
-            <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Van zoekstart tot plaatsing, inclusief eigenaar en gewenste uitstroomdatum</Typography>
+            <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Uitstroom en vervolgplek</Typography>
+            <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Van zoekstart tot plaatsing, inclusief taakverantwoordelijke en gewenste uitstroomdatum</Typography>
             {clientFilter && <Chip label={`Gefilterd op ${clientFilter} ×`} onClick={() => setSearchParams({})} size="small" sx={{ mt: 1, height: 21, bgcolor: '#edf4fa', color: '#376b95', fontSize: 9.5 }} />}
           </Box>
           <Stack direction="row" spacing={1}>
@@ -82,7 +60,7 @@ function UitstroomRegistratiePage() {
                 {['Alle statussen', 'Nog niet gestart', 'Zoeken', 'Wachtlijst', 'Definitief akkoord'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </Select>
             </FormControl>
-            <Button component={RouterLink} to={`/uitstroom-registratie/bijwerken${clientFilter ? `?client=${clientFilter}` : ''}`} variant="contained" size="small" startIcon={<AddRoundedIcon />} sx={{ fontSize: 11.5 }}>Status en besluit bijwerken</Button>
+            {canUpdate && <Button component={RouterLink} to={`/uitstroom-registratie/bijwerken${clientFilter ? `?client=${clientFilter}` : ''}`} variant="contained" size="small" startIcon={<AddRoundedIcon />} sx={{ fontSize: 11.5 }}>Status en besluit verwerken</Button>}
           </Stack>
         </Stack>
         <Divider />
@@ -90,7 +68,7 @@ function UitstroomRegistratiePage() {
           <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
-                {['Jongere', 'Herkomst', 'Vervolgplek', 'Type', 'Gewenste uitstroom', 'Eigenaar', 'Volgende stap'].map((header) => <TableCell key={header}>{header}</TableCell>)}
+                {['Jongere', 'Vóór instroom', 'Vervolgplek', 'Type', 'Gewenste uitstroom', 'Taakverantwoordelijke', 'Volgende stap'].map((header) => <TableCell key={header}>{header}</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -118,6 +96,7 @@ function UitstroomRegistratiePage() {
                   </TableRow>
                 )
               })}
+              {!rows.length && <TableRow><TableCell colSpan={7} sx={{ py: 5, textAlign: 'center' }}><Alert severity="info">{clientFilter ? `Geen actief vervolgplekdossier gevonden voor ${clientFilter}.` : 'Geen dossiers binnen deze statusselectie.'}</Alert></TableCell></TableRow>}
             </TableBody>
           </Table>
         </TableContainer>
@@ -156,32 +135,6 @@ function UitstroomRegistratiePage() {
         </Stack>
       </Box>
 
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>
-          <Typography sx={{ fontSize: 17, fontWeight: 760, color: '#172c42' }}>Gesprek en besluit vastleggen</Typography>
-          <Typography sx={{ mt: .3, fontSize: 10.8, color: '#8492a2' }}>De afspraak en eigenaar worden direct zichtbaar in de vervolgplekmonitor.</Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <FormControl fullWidth><Select value={conversation.clientCode} onChange={(event) => setConversation({ ...conversation, clientCode: event.target.value })} inputProps={{ 'aria-label': 'Jongere' }}>{candidates.map((item) => <MenuItem key={item.clientCode} value={item.clientCode}>{item.clientCode}</MenuItem>)}</Select></FormControl>
-              <TextField fullWidth type="date" label="Gespreksdatum" value={conversation.date} onChange={(event) => setConversation({ ...conversation, date: event.target.value })} InputLabelProps={{ shrink: true }} />
-            </Stack>
-            <TextField label="Onderwerp" value={conversation.subject} onChange={(event) => setConversation({ ...conversation, subject: event.target.value })} />
-            <TextField label="Deelnemers" value={conversation.participants} onChange={(event) => setConversation({ ...conversation, participants: event.target.value })} helperText="Scheid deelnemers met een komma, bijvoorbeeld: jongere, mentor, gemeente" />
-            <TextField label="Besluit" multiline minRows={2} value={conversation.decision} onChange={(event) => setConversation({ ...conversation, decision: event.target.value })} />
-            <TextField label="Volgende actie" value={conversation.nextAction} onChange={(event) => setConversation({ ...conversation, nextAction: event.target.value })} />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField fullWidth label="Actiehouder" value={conversation.owner} onChange={(event) => setConversation({ ...conversation, owner: event.target.value })} />
-              <TextField fullWidth type="date" label="Deadline" value={conversation.dueDate} onChange={(event) => setConversation({ ...conversation, dueDate: event.target.value })} InputLabelProps={{ shrink: true }} />
-            </Stack>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setDialogOpen(false)}>Annuleren</Button>
-          <Button variant="contained" onClick={saveConversation} disabled={!conversation.date || !conversation.subject || !conversation.decision || !conversation.nextAction || !conversation.owner || !conversation.dueDate}>Opslaan</Button>
-        </DialogActions>
-      </Dialog>
     </Stack>
   )
 }

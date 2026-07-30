@@ -67,6 +67,9 @@ const theme = createTheme({
     },
     MuiTableCell: {
       styleOverrides: {
+        root: {
+          fontSize: 12.5,
+        },
         head: {
           fontWeight: 700,
           color: '#64748b',
@@ -86,6 +89,15 @@ const theme = createTheme({
         root: {
           textTransform: 'none',
           fontWeight: 600,
+          minHeight: 40,
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          minWidth: 44,
+          minHeight: 44,
         },
       },
     },

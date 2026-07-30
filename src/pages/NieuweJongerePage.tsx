@@ -8,6 +8,7 @@ import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { loadTrajectories, saveTrajectories } from '../data/demoStore'
 import type { Trajectory } from '../data/careInsights'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
 export default function NieuweJongerePage() {
   const navigate = useNavigate()
@@ -17,10 +18,12 @@ export default function NieuweJongerePage() {
     startDate: '', expectedEndDate: '', location: '', supervisor: '', consentConfirmed: false,
   })
   const [submitted, setSubmitted] = useState(false)
+  useUnsavedChangesWarning(Object.values(values).some(Boolean))
+  const validDateOrder = Boolean(values.startDate && values.expectedEndDate && values.expectedEndDate >= values.startDate)
   const valid = Boolean(
     values.clientCode.trim() && values.originCity.trim() && values.originMunicipality &&
     values.referrer.trim() && values.intakeReason.trim() && values.startDate &&
-    values.expectedEndDate && values.location && values.supervisor && values.consentConfirmed
+    values.expectedEndDate && validDateOrder && values.location && values.supervisor && values.consentConfirmed
   )
   const duplicate = rows.some((item) => item.clientCode.toLowerCase() === values.clientCode.trim().toLowerCase())
 
@@ -35,7 +38,6 @@ export default function NieuweJongerePage() {
       location: values.location as Trajectory['location'],
       startDate: values.startDate,
       expectedEndDate: values.expectedEndDate,
-      currentPhase: 'Stabilisatie',
       supervisor: values.supervisor,
       incidents90d: 0,
       activeNotes: 0,
@@ -55,7 +57,7 @@ export default function NieuweJongerePage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Nieuwe jongere en traject</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>Start één controleerbaar dossier zonder persoonsgegevens te kopiëren die al in het bronsysteem staan.</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Vul alle verplichte intake- en trajectgegevens in en bevestig de grondslag.</Alert>}
+      {submitted && !valid && <Alert severity="warning">{values.startDate && values.expectedEndDate && !validDateOrder ? 'De verwachte einddatum mag niet vóór de startdatum liggen.' : 'Vul alle verplichte intake- en trajectgegevens in en bevestig de grondslag.'}</Alert>}
       {duplicate && <Alert severity="error">Deze cliëntcode bestaat al. Open het bestaande dossier om dubbele registratie te voorkomen.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
@@ -77,7 +79,7 @@ export default function NieuweJongerePage() {
             <Typography sx={{ mb: 1.7, fontSize: 13.5, fontWeight: 760 }}>2. Traject en verantwoordelijkheid</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.7 }}>
               <TextField required type="date" label="Startdatum" value={values.startDate} onChange={(event) => setValues({ ...values, startDate: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
-              <TextField required type="date" label="Verwachte einddatum" value={values.expectedEndDate} onChange={(event) => setValues({ ...values, expectedEndDate: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+              <TextField required type="date" label="Verwachte einddatum" value={values.expectedEndDate} onChange={(event) => setValues({ ...values, expectedEndDate: event.target.value })} error={submitted && Boolean(values.startDate && values.expectedEndDate && !validDateOrder)} helperText={submitted && values.startDate && values.expectedEndDate && !validDateOrder ? 'Kies een datum op of na de startdatum.' : undefined} slotProps={{ inputLabel: { shrink: true } }} />
               <TextField select required label="Startlocatie" value={values.location} onChange={(event) => setValues({ ...values, location: event.target.value })}>
                 {['Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>

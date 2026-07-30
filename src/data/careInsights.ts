@@ -19,7 +19,7 @@ export type Trajectory = {
   previousExpectedEndDate?: string
   expectedEndDateReason?: string
   endDate?: string
-  currentPhase: 'Stabilisatie' | 'Verantwoordelijkheid' | 'Onafhankelijkheid' | 'Voorbereiding uitstroom'
+  currentPhase?: 'Stabilisatie' | 'Verantwoordelijkheid' | 'Onafhankelijkheid' | 'Voorbereiding uitstroom'
   supervisor: string
   incidents90d: number
   activeNotes: number
@@ -50,6 +50,11 @@ export type WorkItem = {
   dueTime?: string
   completionNote?: string
   completedAt?: string
+  updatedAt?: string
+  responsibleRoles?: WorkspaceRole[]
+  sourceReportId?: string
+  sourceAppointmentId?: string
+  createdByRole?: WorkspaceRole
 }
 
 export type PlacementConversation = {
@@ -63,6 +68,8 @@ export type PlacementConversation = {
   owner: string
   dueDate: string
   status: 'Afgerond' | 'Open'
+  decisionBy?: string
+  evidenceReference?: string
 }
 
 export type IncidentRecord = {
@@ -71,7 +78,7 @@ export type IncidentRecord = {
   date: string
   category: 'Ordeverstoring' | 'Vermijding / zorgmijding' | 'Agressie' | 'Onvoldoende hygiëne' | 'Middelengebruik' | 'Grensoverschrijdend' | 'Onrechtmatige toe-eigening'
   severity: 'Regulier' | 'Zwaar'
-  phase: Trajectory['currentPhase']
+  phase?: NonNullable<Trajectory['currentPhase']>
   location: Trajectory['location']
   measure: 'Aantekening' | 'Time-out' | 'Officiële waarschuwing'
   recoveryRequired: boolean
@@ -94,12 +101,23 @@ export const trajectories: Trajectory[] = [
 ]
 
 export const workItems: WorkItem[] = [
-  { id: 'A-01', clientCode: 'WKZ-004', title: 'UVO plannen', detail: '3 actieve aantekeningen binnen 21 dagen', due: 'Vandaag, 16:00', urgency: 'Vandaag', owner: 'M. van Dijk', type: 'UVO' },
-  { id: 'A-02', clientCode: 'WKZ-002', title: 'Herstelgesprek vastleggen', detail: 'Na time-out van 26 juli', due: '1 dag te laat', urgency: 'Te laat', owner: 'S. Vermeer', type: 'Herstelgesprek' },
-  { id: 'A-03', clientCode: 'WKZ-006', title: 'Aanmelding vervolgplek afronden', detail: 'Ontbrekend toestemmingsformulier', due: 'Morgen', urgency: 'Deze week', owner: 'S. Vermeer', type: 'Vervolgplek' },
-  { id: 'A-04', clientCode: 'WKZ-008', title: 'Warme overdracht plannen', detail: 'Definitief akkoord van Startpunt ontvangen', due: '31 juli', urgency: 'Deze week', owner: 'N. Janssen', type: 'Vervolgplek' },
-  { id: 'A-05', clientCode: 'WKZ-001', title: 'Eindevaluatie voorbereiden', detail: 'Uitstroom staat gepland voor 18 augustus', due: '2 augustus', urgency: 'Deze week', owner: 'N. Janssen', type: 'Evaluatie' },
+  { id: 'A-01', clientCode: 'WKZ-004', title: 'UVO plannen', detail: '3 actieve aantekeningen binnen 21 dagen', due: 'Vandaag, 16:00', urgency: 'Vandaag', owner: 'M. van Dijk', type: 'UVO', responsibleRoles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { id: 'A-02', clientCode: 'WKZ-002', title: 'Herstelgesprek vastleggen', detail: 'Na time-out van 26 juli', due: '1 dag te laat', urgency: 'Te laat', owner: 'S. Vermeer', type: 'Herstelgesprek', responsibleRoles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
+  { id: 'A-03', clientCode: 'WKZ-006', title: 'Aanmelding vervolgplek afronden', detail: 'Ontbrekend toestemmingsformulier', due: 'Morgen', urgency: 'Deze week', owner: 'S. Vermeer', type: 'Vervolgplek', responsibleRoles: ['Begeleider', 'Zorgmanager'] },
+  { id: 'A-04', clientCode: 'WKZ-008', title: 'Warme overdracht plannen', detail: 'Definitief akkoord van Startpunt ontvangen', due: '31 juli', urgency: 'Deze week', owner: 'N. Janssen', type: 'Vervolgplek', responsibleRoles: ['Begeleider', 'Zorgmanager'] },
+  { id: 'A-05', clientCode: 'WKZ-001', title: 'Eindevaluatie voorbereiden', detail: 'Uitstroom staat gepland voor 18 augustus', due: '2 augustus', urgency: 'Deze week', owner: 'N. Janssen', type: 'Evaluatie', responsibleRoles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
 ]
+
+export function workItemVisibleForRole(item: WorkItem, role: WorkspaceRole) {
+  if (role === 'Zorgmanager') return true
+  if (item.responsibleRoles?.length) {
+    const storedRoles = item.responsibleRoles as string[]
+    if (role === 'Begeleider') return storedRoles.some((storedRole) => ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider'].includes(storedRole))
+    return storedRoles.includes(role)
+  }
+  if (role === 'Gedragswetenschapper') return ['UVO', 'Herstelgesprek'].includes(item.type)
+  return role === 'Begeleider'
+}
 
 export const placementConversations: PlacementConversation[] = [
   { id: 'G-01', clientCode: 'WKZ-001', date: '2026-07-24', subject: 'Definitief plaatsingsbesluit', participants: ['Jongere', 'Mentor N. Janssen', 'Gemeente Zaanstad', 'Kompas Wonen'], decision: 'Plaatsing per 18 augustus akkoord', nextAction: 'Warme overdracht en sleuteloverdracht plannen', owner: 'N. Janssen', dueDate: '2026-08-04', status: 'Open' },
@@ -178,6 +196,8 @@ export function getDataQualityIssues(rows: Trajectory[]): DataQualityIssue[] {
     if (!row.location) add('Locatie', 'Nodig voor bezetting en locatievergelijking')
     if (!row.supervisor) add('Trajectbegeleider', 'Nodig voor eigenaarschap en opvolging')
     if (!row.expectedEndDate) add('Verwachte einddatum', 'Nodig voor tijdige uitstroomsturing')
+    if (row.startDate && row.expectedEndDate && new Date(row.expectedEndDate) < new Date(row.startDate)) add('Trajectdatums', 'Verwachte einddatum ligt vóór de instroomdatum')
+    if (!row.consentConfirmed) add('Verwerkingsgrondslag', 'Controle of bronverwijzing voor de verwerkingsgrondslag ontbreekt', 'Controleren')
     if (row.endDate && !row.outcome) add('Uitstroomresultaat', 'Afgesloten traject mist gepland of ongepland resultaat')
     if (row.endDate && row.followUpPlace !== 'Geplaatst') add('Vervolgplek', 'Afgesloten traject heeft geen definitieve plaatsingsstatus')
     if (row.followUpPlace === 'Geplaatst' && !row.followUpProvider) add('Vervolgaanbieder', 'Plaatsing mist ontvangende aanbieder', 'Controleren')
@@ -193,9 +213,12 @@ export function dataCompleteness(rows: Trajectory[]) {
     Boolean(row.location),
     Boolean(row.supervisor),
     Boolean(row.expectedEndDate),
+    Boolean(row.startDate && row.expectedEndDate && new Date(row.expectedEndDate) >= new Date(row.startDate)),
+    Boolean(row.consentConfirmed),
     !row.endDate || Boolean(row.outcome),
     !row.endDate || row.followUpPlace === 'Geplaatst',
   ])
   if (!requiredChecks.length) return 0
   return Math.round((requiredChecks.filter(Boolean).length / requiredChecks.length) * 100)
 }
+import type { WorkspaceRole } from '../context/RoleContext'

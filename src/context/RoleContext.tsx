@@ -1,15 +1,11 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
 export type WorkspaceRole =
-  | 'Woonbegeleider'
-  | 'Ambulant begeleider'
-  | 'Gedragswetenschapper'
-  | 'Locatieleider'
-  | 'Management'
-  | 'Administratie'
-  | 'Directie'
   | 'Begeleider'
+  | 'Gedragswetenschapper'
   | 'Zorgmanager'
+  | 'Directie'
 
 const ROLE_KEY = 'wkz-demo-workspace-role-v1'
 
@@ -18,14 +14,14 @@ const RoleContext = createContext<{
   setRole: (role: WorkspaceRole) => void
 } | null>(null)
 
-export const workspaceRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Management', 'Administratie', 'Directie']
+export const workspaceRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Directie']
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<WorkspaceRole>(() => {
     const stored = window.localStorage.getItem(ROLE_KEY)
-    if (stored === 'Begeleider') return 'Woonbegeleider'
-    if (stored === 'Zorgmanager') return 'Locatieleider'
-    return workspaceRoles.includes(stored as WorkspaceRole) ? stored as WorkspaceRole : 'Locatieleider'
+    if (stored === 'Woonbegeleider' || stored === 'Ambulant begeleider') return 'Begeleider'
+    if (stored === 'Locatieleider' || stored === 'Management' || stored === 'Administratie') return 'Zorgmanager'
+    return workspaceRoles.includes(stored as WorkspaceRole) ? stored as WorkspaceRole : 'Begeleider'
   })
 
   const value = useMemo(() => ({

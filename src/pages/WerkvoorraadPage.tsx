@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
   FormControl, MenuItem, Select, Stack, TextField, Typography,
@@ -10,7 +10,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
-import { workItems, type WorkItem } from '../data/careInsights'
+import { workItems, workItemVisibleForRole, type WorkItem } from '../data/careInsights'
 import { loadWorkQueue, saveWorkQueue } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
 
@@ -19,7 +19,7 @@ type ActionRow = WorkItem & { status: ActionStatus; policyReason: string; comple
 
 const policyReasons: Record<WorkItem['type'], string> = {
   UVO: 'Pedagogisch beleid: bij 3 aantekeningen binnen circa 2–3 weken wordt het netwerk uitgenodigd voor een UVO.',
-  Herstelgesprek: 'Pedagogisch beleid: herstelgesprek is verplicht na een zwaar incident, time-out of officiële waarschuwing.',
+  Herstelgesprek: 'Pedagogisch beleid: na ieder incident wordt herstelopvolging beoordeeld en aantoonbaar vastgelegd.',
   Vervolgplek: 'Doorstroom: besluit, deelnemers, actiehouder en deadline moeten controleerbaar zijn vastgelegd.',
   Evaluatie: 'Medewerkershandboek: zorgplan bijhouden en zorg periodiek evalueren.',
 }
@@ -33,57 +33,87 @@ const urgencyTone = {
 function WerkvoorraadPage() {
   const { role } = useWorkspaceRole()
   const [searchParams] = useSearchParams()
-  const defaultActions = workItems.map((item): ActionRow => ({ ...item, status: 'Open', policyReason: policyReasons[item.type] }))
-  const [actions, setActions] = useState<ActionRow[]>(() => loadWorkQueue(defaultActions))
+  const defaultActions = useMemo(() => workItems.map((item): ActionRow => ({ ...item, status: 'Open', policyReason: policyReasons[item.type], updatedAt: 'demo-v1' })), [])
+  const loadCurrentActions = () => loadWorkQueue<ActionRow>(defaultActions).map((item) => ({
+    ...defaultActions.find((defaultItem) => defaultItem.id === item.id),
+    ...item,
+  }))
+  const [actions, setActions] = useState<ActionRow[]>(loadCurrentActions)
   const [typeFilter, setTypeFilter] = useState('Alle typen')
-  const [ownerFilter, setOwnerFilter] = useState('Alle eigenaren')
+  const [ownerFilter, setOwnerFilter] = useState('Alle verantwoordelijken')
   const [selected, setSelected] = useState<ActionRow | null>(null)
   const [completionNote, setCompletionNote] = useState('')
+  const [conflictMessage, setConflictMessage] = useState('')
+
+  useEffect(() => {
+    const refreshFromOtherTab = (event: StorageEvent) => {
+      if (event.key?.includes('work-queue')) {
+        const latest = loadWorkQueue<ActionRow>(defaultActions).map((item) => ({
+          ...defaultActions.find((defaultItem) => defaultItem.id === item.id),
+          ...item,
+        }))
+        setActions(latest)
+      }
+    }
+    window.addEventListener('storage', refreshFromOtherTab)
+    return () => window.removeEventListener('storage', refreshFromOtherTab)
+  }, [defaultActions])
 
   const visible = useMemo(() => actions.filter((item) => {
-    const roleMatches =
-      role === 'Gedragswetenschapper' ? ['UVO', 'Herstelgesprek'].includes(item.type) :
-      ['Directie', 'Management'].includes(role) ? ['Vandaag', 'Te laat'].includes(item.urgency) :
-      true
     return item.status === 'Open' &&
-      roleMatches &&
+      workItemVisibleForRole(item, role) &&
       (typeFilter === 'Alle typen' || item.type === typeFilter) &&
-      (ownerFilter === 'Alle eigenaren' || item.owner === ownerFilter)
+      (ownerFilter === 'Alle verantwoordelijken' || item.owner === ownerFilter)
   }), [actions, ownerFilter, role, typeFilter])
 
   const completeAction = () => {
     if (!selected || !completionNote.trim()) return
-    setActions((current) => {
-      const completedAt = new Date().toISOString()
-      const next = current.map((item): ActionRow => item.id === selected.id ? { ...item, status: 'Afgerond', completionNote: completionNote.trim(), completedAt } : item)
-      saveWorkQueue(next)
-      return next
-    })
+    const latest = loadCurrentActions()
+    const latestSelected = latest.find((item) => item.id === selected.id)
+    if (!latestSelected || latestSelected.status !== selected.status || latestSelected.updatedAt !== selected.updatedAt) {
+      setActions(latest)
+      setSelected(null)
+      setCompletionNote('')
+      setConflictMessage('Deze taak is intussen in een andere sessie gewijzigd. De werkvoorraad is vernieuwd; controleer de actuele status voordat u verdergaat.')
+      return
+    }
+    const completedAt = new Date().toISOString()
+    const next = latest.map((item): ActionRow => item.id === selected.id ? {
+      ...item,
+      status: 'Afgerond',
+      completionNote: completionNote.trim(),
+      completedAt,
+      updatedAt: completedAt,
+    } : item)
+    saveWorkQueue(next)
+    setActions(next)
     setSelected(null)
     setCompletionNote('')
+    setConflictMessage('')
   }
 
   return (
     <Stack spacing={2.5}>
       {searchParams.get('created') === '1' && <Alert severity="success">De taak is toegevoegd en staat nu in de werkvoorraad.</Alert>}
-      {searchParams.get('updated') === '1' && <Alert severity="success">De taak, eigenaar en deadline zijn bijgewerkt.</Alert>}
+      {searchParams.get('updated') === '1' && <Alert severity="success">De taak, taakverantwoordelijke en deadline zijn bijgewerkt.</Alert>}
+      {conflictMessage && <Alert severity="warning" onClose={() => setConflictMessage('')}>{conflictMessage}</Alert>}
       <Box sx={{ p: 2.3, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
-        <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Eén gezamenlijke werkvoorraad</Typography>
+        <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Werkvoorraad voor {role.toLowerCase()}</Typography>
         <Typography sx={{ mt: .4, maxWidth: 850, fontSize: 10.9, lineHeight: 1.55, color: '#567188' }}>
-          Deze werkvoorraad is afgestemd op de rol {role.toLowerCase()}. Iedere actie bevat de beleidsaanleiding, eigenaar, deadline en een controleerbaar resultaat.
+          Deze prototypeweergave filtert op rol en toont daarna de verantwoordelijke medewerker. Een productieversie moet aanvullend op de ingelogde gebruiker, caseload, locatie en waarneming filteren.
         </Typography>
       </Box>
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} justifyContent="space-between" gap={1.4} sx={{ p: 2 }}>
           <Box>
-            <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>{visible.length} open acties</Typography>
+            <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>{visible.length} openstaande taken</Typography>
             <Typography sx={{ mt: .2, fontSize: 10.5, color: '#8492a2' }}>{visible.filter((item) => item.urgency === 'Te laat').length} te laat · {visible.filter((item) => item.urgency === 'Vandaag').length} vandaag</Typography>
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <Button component={RouterLink} to="/acties/nieuw" variant="contained" startIcon={<AddRoundedIcon />}>Nieuwe taak</Button>
             <FormControl size="small" sx={{ minWidth: 155 }}><Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} inputProps={{ 'aria-label': 'Actietype' }}>{['Alle typen', 'UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
-            <FormControl size="small" sx={{ minWidth: 160 }}><Select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} inputProps={{ 'aria-label': 'Actiehouder' }}>{['Alle eigenaren', ...Array.from(new Set(actions.map((item) => item.owner)))].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
+            <FormControl size="small" sx={{ minWidth: 180 }}><Select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} inputProps={{ 'aria-label': 'Taakverantwoordelijke' }}>{['Alle verantwoordelijken', ...Array.from(new Set(actions.map((item) => item.owner)))].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
           </Stack>
         </Stack>
         <Divider />
@@ -110,19 +140,19 @@ function WerkvoorraadPage() {
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
                     {['UVO', 'Herstelgesprek', 'Evaluatie'].includes(item.type) && <Button component={RouterLink} to={`/jongeren/${item.clientCode}/afspraak/nieuw?type=${item.type}&task=${item.id}`} size="small" variant="outlined" startIcon={<CalendarMonthRoundedIcon />} sx={{ fontSize: 10.5 }}>Inplannen</Button>}
                     <Button component={RouterLink} to={`/acties/${item.id}/bewerken`} size="small" variant="outlined" startIcon={<EditRoundedIcon />} sx={{ fontSize: 10.5 }}>Wijzigen</Button>
-                    <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={['Directie', 'Management'].includes(role)} sx={{ fontSize: 10.5 }}>Afronden</Button>
+                    {item.type === 'Vervolgplek' && <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} sx={{ fontSize: 10.5 }}>Taak afronden</Button>}
                   </Stack>
                 </Stack>
               </Box>
             )
           })}
-          {visible.length === 0 && <Box sx={{ py: 6, textAlign: 'center' }}><CheckRoundedIcon sx={{ color: '#62a087' }} /><Typography sx={{ mt: .7, fontSize: 11.5, color: '#6e8192' }}>Geen open acties binnen deze filters.</Typography></Box>}
+          {visible.length === 0 && <Box sx={{ py: 6, textAlign: 'center' }}><CheckRoundedIcon sx={{ color: '#62a087' }} /><Typography sx={{ mt: .7, fontSize: 11.5, color: '#6e8192' }}>Geen openstaande taken voor deze rol en filters.</Typography></Box>}
         </Stack>
       </Box>
 
       <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} fullWidth maxWidth="sm">
         <DialogTitle>
-          <Typography sx={{ fontSize: 17, fontWeight: 760, color: '#172c42' }}>Actie afronden</Typography>
+          <Typography sx={{ fontSize: 17, fontWeight: 760, color: '#172c42' }}>Taak afronden</Typography>
           <Typography sx={{ mt: .3, fontSize: 10.8, color: '#8492a2' }}>{selected?.clientCode} · {selected?.title}</Typography>
         </DialogTitle>
         <DialogContent>

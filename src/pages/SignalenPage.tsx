@@ -18,9 +18,9 @@ const priorityTone = {
 }
 
 function roleAllows(signal: CareSignal, role: string) {
-  if (role === 'Directie' || role === 'Management') return signal.priority !== 'Normaal'
+  if (role === 'Directie') return false
   if (role === 'Gedragswetenschapper') return signal.type === 'Veiligheid' || signal.priority === 'Kritiek'
-  if (['Begeleider', 'Woonbegeleider', 'Ambulant begeleider'].includes(role)) return signal.owner !== 'Nog toe te wijzen'
+  if (role === 'Begeleider') return signal.owner !== 'Nog toe te wijzen'
   return true
 }
 
@@ -28,10 +28,9 @@ export default function SignalenPage() {
   const { role } = useWorkspaceRole()
   const [type, setType] = useState('Alle typen')
   const [priority, setPriority] = useState('Alle prioriteiten')
-  const signals = useMemo(() => deriveSignals(
-    loadTrajectories(),
-    loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))).filter((item) => item.status === 'Open'),
-  ), [])
+  const allTasks = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))), [])
+  const openTasks = allTasks.filter((item) => item.status === 'Open')
+  const signals = useMemo(() => deriveSignals(loadTrajectories(), allTasks), [allTasks])
 
   const visible = signals.filter((signal) =>
     roleAllows(signal, role) &&
@@ -74,6 +73,8 @@ export default function SignalenPage() {
         <Stack divider={<Divider flexItem />}>
           {visible.map((signal) => {
             const tone = priorityTone[signal.priority]
+            const taskType = signal.title.includes('UVO') ? 'UVO' : signal.type === 'Veiligheid' ? 'Herstelgesprek' : signal.type === 'Doorstroom' ? 'Vervolgplek' : 'Evaluatie'
+            const linkedTask = openTasks.find((item) => item.clientCode === signal.clientCode && item.type === taskType)
             return (
               <Box key={signal.id} sx={{ p: 2.2 }}>
                 <Stack direction={{ xs: 'column', lg: 'row' }} gap={1.7} alignItems={{ lg: 'center' }}>
@@ -96,15 +97,19 @@ export default function SignalenPage() {
                   </Box>
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${signal.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />}>Dossier</Button>
-                    <Button
-                      component={RouterLink}
-                      to={`/acties/nieuw?client=${signal.clientCode}&type=${signal.title.includes('UVO') ? 'UVO' : signal.type === 'Veiligheid' ? 'Herstelgesprek' : signal.type === 'Doorstroom' ? 'Vervolgplek' : 'Evaluatie'}&source=${encodeURIComponent(signal.reason)}`}
-                      size="small"
-                      variant="contained"
-                      startIcon={<AddTaskRoundedIcon />}
-                    >
-                      Maak taak
-                    </Button>
+                    {linkedTask ? (
+                      <Button component={RouterLink} to={`/acties/${linkedTask.id}/bewerken`} size="small" variant="outlined">In werkvoorraad</Button>
+                    ) : (
+                      <Button
+                        component={RouterLink}
+                        to={`/acties/nieuw?client=${signal.clientCode}&type=${taskType}&source=${encodeURIComponent(signal.reason)}`}
+                        size="small"
+                        variant="contained"
+                        startIcon={<AddTaskRoundedIcon />}
+                      >
+                        Taak aanmaken
+                      </Button>
+                    )}
                   </Stack>
                 </Stack>
               </Box>

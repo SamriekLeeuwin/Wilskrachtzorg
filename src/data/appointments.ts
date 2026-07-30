@@ -1,3 +1,5 @@
+import type { WorkspaceRole } from '../context/RoleContext'
+
 export type CareAppointment = {
   id: string
   date: string
@@ -11,11 +13,14 @@ export type CareAppointment = {
   agenda?: string[]
   relatedTaskId?: string
   status?: 'Gepland' | 'Afgerond'
+  outcome?: 'Gehouden' | 'Niet verschenen' | 'Geannuleerd'
   attendees?: string
   summary?: string
   decision?: string
   followUp?: string
   completedAt?: string
+  createdByRole?: WorkspaceRole
+  requiredRoles?: WorkspaceRole[]
   invitations?: Array<{
     id: string
     name: string
@@ -23,6 +28,7 @@ export type CareAppointment = {
     contact: string
     channel: 'E-mail' | 'Telefoon'
     status: 'Concept' | 'Verzonden' | 'Geaccepteerd' | 'Afgewezen'
+    statusUpdatedAt?: string
   }>
 }
 

@@ -14,6 +14,7 @@ import {
   dataCompleteness, filterTrajectories, getDataQualityIssues, type Filters,
 } from '../data/careInsights'
 import { loadTrajectories } from '../data/demoStore'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 const definitions = [
   {
@@ -61,6 +62,8 @@ const definitions = [
 ]
 
 function KpiOverzichtPage() {
+  const { role } = useWorkspaceRole()
+  const canOpenDossier = role === 'Zorgmanager'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const [tab, setTab] = useState(0)
   const rows = useMemo(() => loadTrajectories(), [])
@@ -70,13 +73,13 @@ function KpiOverzichtPage() {
   const active = filtered.filter((row) => !row.endDate)
   const overdue = active.filter((row) => new Date(row.expectedEndDate) < new Date('2026-07-28'))
   const blocking = issues.filter((issue) => issue.severity === 'Blokkerend')
-  const trustworthy = completeness >= 95 && blocking.length === 0
+  const passesPrototypeChecks = completeness >= 95 && blocking.length === 0
 
   return (
     <Stack spacing={2.5}>
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Box sx={{ px: 2.5, pt: 2.2 }}>
-          <Typography sx={{ fontSize: 15, fontWeight: 780, color: '#172c42' }}>Controleer vóór je cijfers deelt</Typography>
+          <Typography sx={{ fontSize: 15, fontWeight: 780, color: '#172c42' }}>Controleer vóór u cijfers deelt</Typography>
           <Typography sx={{ mt: .35, fontSize: 11.2, color: '#748598' }}>
             Eén werkplek voor bronkwaliteit, uitzonderingen en afgesproken KPI-berekeningen.
           </Typography>
@@ -92,17 +95,17 @@ function KpiOverzichtPage() {
       {tab === 0 ? (
         <>
           <Alert
-            severity={trustworthy ? 'success' : 'warning'}
-            icon={trustworthy ? <CheckCircleRoundedIcon /> : <ErrorOutlineRoundedIcon />}
-            sx={{ border: `1px solid ${trustworthy ? '#bde4d5' : '#f1d6a9'}`, borderRadius: 2.5 }}
+            severity={passesPrototypeChecks ? 'success' : 'warning'}
+            icon={passesPrototypeChecks ? <CheckCircleRoundedIcon /> : <ErrorOutlineRoundedIcon />}
+            sx={{ border: `1px solid ${passesPrototypeChecks ? '#bde4d5' : '#f1d6a9'}`, borderRadius: 2.5 }}
           >
             <Typography sx={{ fontWeight: 760, fontSize: 13 }}>
-              {trustworthy ? 'Vrijgegeven voor intern managementgebruik' : 'Nog niet vrijgeven voor externe rapportage'}
+              {passesPrototypeChecks ? 'Prototypecontroles zonder blokkade' : 'Niet vrijgeven voor rapportage'}
             </Typography>
             <Typography sx={{ fontSize: 11.5 }}>
-              {trustworthy
-                ? 'De selectie voldoet aan de ingestelde minimale kwaliteitsgrens.'
-                : `${blocking.length} blokkerende controles moeten eerst worden opgelost. Interne verkenning kan wel, met deze waarschuwing zichtbaar.`}
+              {passesPrototypeChecks
+                ? 'De ingebouwde controles zijn doorlopen. Formele bronvalidatie en goedkeuring blijven vóór ieder intern of extern gebruik verplicht.'
+                : `${blocking.length} blokkerende controles moeten eerst worden opgelost. Verkenning kan alleen met deze waarschuwing zichtbaar.`}
             </Typography>
           </Alert>
 
@@ -132,7 +135,7 @@ function KpiOverzichtPage() {
                       <TableCell>{issue.field}</TableCell>
                       <TableCell>{issue.problem}</TableCell>
                       <TableCell><Chip label={issue.severity} size="small" sx={{ height: 21, fontSize: 10, bgcolor: issue.severity === 'Blokkerend' ? '#fcecea' : '#fff3e5', color: issue.severity === 'Blokkerend' ? '#a44539' : '#925b1d' }} /></TableCell>
-                      <TableCell><Button component={RouterLink} to={`/jongeren/${issue.clientCode}`} size="small">Open dossier</Button></TableCell>
+                      <TableCell>{canOpenDossier ? <Button component={RouterLink} to={`/jongeren/${issue.clientCode}`} size="small">Open dossier</Button> : <Typography sx={{ fontSize: 10.5, color: '#718395' }}>Opvolging door zorgmanager</Typography>}</TableCell>
                     </TableRow>
                   )) : (
                     <TableRow><TableCell colSpan={5} align="center" sx={{ py: 5, color: '#718196' }}>Geen problemen gevonden in deze selectie.</TableCell></TableRow>

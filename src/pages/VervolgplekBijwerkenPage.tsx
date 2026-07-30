@@ -11,12 +11,14 @@ import {
   loadPlacementConversations, loadTrajectories, loadWorkQueue,
   savePlacementConversations, saveTrajectories, saveWorkQueue,
 } from '../data/demoStore'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
 export default function VervolgplekBijwerkenPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const trajectories = useMemo(() => loadTrajectories().filter((item) => !item.endDate), [])
-  const initialCode = searchParams.get('client') ?? trajectories[0]?.clientCode ?? ''
+  const requestedCode = searchParams.get('client')
+  const initialCode = requestedCode ?? trajectories[0]?.clientCode ?? ''
   const initialTrajectory = trajectories.find((item) => item.clientCode === initialCode)
   const [values, setValues] = useState({
     clientCode: initialCode,
@@ -28,15 +30,33 @@ export default function VervolgplekBijwerkenPage() {
     subject: 'Voortgang vervolgplek',
     participants: 'Jongere, mentor / begeleider, gemeente / verwijzer',
     decision: '',
+    decisionBy: '',
+    evidenceReference: '',
     nextAction: '',
     owner: initialTrajectory?.supervisor ?? '',
     dueDate: '',
+    actualOutflowDate: '',
+    outcome: '' as '' | 'Gepland' | 'Ongepland',
   })
   const [submitted, setSubmitted] = useState(false)
+  const requiresProvider = ['Definitief akkoord', 'Geplaatst'].includes(values.status)
+  const isPlaced = values.status === 'Geplaatst'
+  const formDirty = Boolean(
+    values.decision.trim() || values.decisionBy.trim() || values.evidenceReference.trim() ||
+    values.nextAction.trim() || values.dueDate || values.actualOutflowDate || values.outcome ||
+    values.clientCode !== initialCode || values.status !== (initialTrajectory?.followUpPlace ?? 'Nog niet gestart') ||
+    values.followUpType !== (initialTrajectory?.followUpType ?? '') ||
+    values.provider !== (initialTrajectory?.followUpProvider ?? '') ||
+    values.plannedOutflow !== (initialTrajectory?.plannedOutflow ?? '')
+  )
+  useUnsavedChangesWarning(formDirty)
   const valid = Boolean(
     values.clientCode && values.status && values.plannedOutflow && values.date &&
     values.subject.trim() && values.participants.trim() && values.decision.trim() &&
-    values.nextAction.trim() && values.owner && values.dueDate
+    values.decisionBy.trim() && values.evidenceReference.trim() &&
+    values.nextAction.trim() && values.owner && values.dueDate &&
+    (!requiresProvider || (values.followUpType.trim() && values.provider.trim())) &&
+    (!isPlaced || (values.actualOutflowDate && values.outcome))
   )
 
   const selectClient = (clientCode: string) => {
@@ -63,6 +83,7 @@ export default function VervolgplekBijwerkenPage() {
       followUpType: values.followUpType.trim() || undefined,
       followUpProvider: values.provider.trim() || undefined,
       plannedOutflow: values.plannedOutflow,
+      ...(isPlaced ? { endDate: values.actualOutflowDate, outcome: values.outcome as NonNullable<Trajectory['outcome']> } : {}),
     } : item))
 
     const conversations = loadPlacementConversations()
@@ -77,13 +98,15 @@ export default function VervolgplekBijwerkenPage() {
       owner: values.owner,
       dueDate: values.dueDate,
       status: 'Open',
+      decisionBy: values.decisionBy.trim(),
+      evidenceReference: values.evidenceReference.trim(),
     }
     savePlacementConversations([conversation, ...conversations])
 
     const queue = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' })))
     const dueLabel = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(`${values.dueDate}T12:00:00`))
-    saveWorkQueue([{
-      id: `A-VP-${conversation.id}`,
+    const task: WorkItem = {
+      id: `A-VP-${values.clientCode}`,
       clientCode: values.clientCode,
       type: 'Vervolgplek',
       title: values.nextAction.trim(),
@@ -93,20 +116,34 @@ export default function VervolgplekBijwerkenPage() {
       urgency: 'Deze week',
       owner: values.owner,
       status: 'Open',
-      policyReason: 'Doorstroom: ieder besluit heeft een concrete vervolgactie, eigenaar en deadline.',
-    }, ...queue])
+      policyReason: 'Doorstroom: ieder besluit heeft een concrete vervolgtaak, taakverantwoordelijke en deadline.',
+      responsibleRoles: ['Begeleider', 'Zorgmanager'],
+      updatedAt: new Date().toISOString(),
+    }
+    const existingTask = queue.find((item) => item.id === task.id)
+    saveWorkQueue(existingTask ? queue.map((item) => item.id === task.id ? task : item) : [task, ...queue])
     navigate(`/jongeren/${values.clientCode}?placement=updated`)
   }
 
   const selected = trajectories.find((item) => item.clientCode === values.clientCode)
+
+  if ((requestedCode && !initialTrajectory) || !trajectories.length) {
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', py: { xs: 2, md: 5 } }}>
+        <Alert severity="error">{requestedCode ? `Het cliëntdossier “${requestedCode}” bestaat niet of is niet actief.` : 'Er zijn geen actieve dossiers om bij te werken.'} Er is niets gewijzigd.</Alert>
+        <Button component={RouterLink} to="/uitstroom-registratie" startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>Terug naar uitstroom en vervolgplek</Button>
+      </Stack>
+    )
+  }
+
   return (
     <Stack spacing={2.5}>
       <Box>
-        <Button component={RouterLink} to="/uitstroom-registratie" startIcon={<ArrowBackRoundedIcon />} sx={{ px: 0, mb: 1 }}>Terug naar vervolgplekmonitor</Button>
+        <Button component={RouterLink} to="/uitstroom-registratie" startIcon={<ArrowBackRoundedIcon />} sx={{ px: 0, mb: 1 }}>Terug naar uitstroom en vervolgplek</Button>
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Vervolgplek en besluit bijwerken</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>Eén invoer werkt de monitor, het dossier en de werkvoorraad samen bij.</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Vul status, uitstroomdatum, besluit, vervolgactie, eigenaar en deadline volledig in.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Vul status, datum, besluitnemer, bewijs, vervolgtaak, taakverantwoordelijke en deadline volledig in. Definitief akkoord of plaatsing vereist ook een type en aanbieder.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
         <Stack spacing={2.5}>
@@ -122,6 +159,8 @@ export default function VervolgplekBijwerkenPage() {
               <TextField label="Type vervolgplek" value={values.followUpType} onChange={(event) => setValues({ ...values, followUpType: event.target.value })} />
               <TextField label="Aanbieder" value={values.provider} onChange={(event) => setValues({ ...values, provider: event.target.value })} />
               <TextField required type="date" label="Gewenste uitstroomdatum" value={values.plannedOutflow} onChange={(event) => setValues({ ...values, plannedOutflow: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+              {isPlaced && <TextField required type="date" label="Werkelijke uitstroomdatum" value={values.actualOutflowDate} onChange={(event) => setValues({ ...values, actualOutflowDate: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />}
+              {isPlaced && <TextField select required label="Uitstroomresultaat" value={values.outcome} onChange={(event) => setValues({ ...values, outcome: event.target.value as 'Gepland' | 'Ongepland' })}><MenuItem value="Gepland">Gepland</MenuItem><MenuItem value="Ongepland">Ongepland</MenuItem></TextField>}
             </Box>
           </Box>
 
@@ -134,6 +173,10 @@ export default function VervolgplekBijwerkenPage() {
               </Box>
               <TextField required label="Aanwezigen" value={values.participants} onChange={(event) => setValues({ ...values, participants: event.target.value })} helperText="Scheid aanwezigen met een komma." />
               <TextField required multiline minRows={3} label="Besluit" value={values.decision} onChange={(event) => setValues({ ...values, decision: event.target.value })} />
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.7 }}>
+                <TextField required label="Besluit genomen door" value={values.decisionBy} onChange={(event) => setValues({ ...values, decisionBy: event.target.value })} helperText="Naam en rol van de bevoegde besluitnemer." />
+                <TextField required label="Bewijs- of bronreferentie" value={values.evidenceReference} onChange={(event) => setValues({ ...values, evidenceReference: event.target.value })} helperText="Bijvoorbeeld besluit-ID of documentreferentie; upload volgt later." />
+              </Box>
             </Stack>
           </Box>
 
@@ -141,7 +184,7 @@ export default function VervolgplekBijwerkenPage() {
             <Typography sx={{ mb: 1.7, fontSize: 13.5, fontWeight: 760 }}>3. Verplichte vervolgactie</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr 1fr' }, gap: 1.7 }}>
               <TextField required label="Volgende actie" value={values.nextAction} onChange={(event) => setValues({ ...values, nextAction: event.target.value })} />
-              <TextField select required label="Eigenaar" value={values.owner} onChange={(event) => setValues({ ...values, owner: event.target.value })}>
+              <TextField select required label="Taakverantwoordelijke" value={values.owner} onChange={(event) => setValues({ ...values, owner: event.target.value })}>
                 {Array.from(new Set(trajectories.map((item) => item.supervisor))).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
               <TextField required type="date" label="Deadline" value={values.dueDate} onChange={(event) => setValues({ ...values, dueDate: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
@@ -156,7 +199,7 @@ export default function VervolgplekBijwerkenPage() {
             <Typography sx={{ fontSize: 10.8 }}>{values.clientCode} · {selected?.location}</Typography>
             <Typography sx={{ fontSize: 10.8 }}>Status: {values.status}</Typography>
             <Typography sx={{ fontSize: 10.8 }}>Uitstroom: {values.plannedOutflow || '—'}</Typography>
-            <Typography sx={{ fontSize: 10.8 }}>Actiehouder: {values.owner || '—'}</Typography>
+            <Typography sx={{ fontSize: 10.8 }}>Taakverantwoordelijke: {values.owner || '—'}</Typography>
           </Stack>
           <Divider sx={{ my: 1.7 }} />
           <Button fullWidth size="large" variant="contained" onClick={save}>Besluit en actie opslaan</Button>

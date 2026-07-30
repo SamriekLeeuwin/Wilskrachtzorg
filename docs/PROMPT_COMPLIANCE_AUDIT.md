@@ -1,5 +1,13 @@
 # Controle op naleving van de UX-opdracht
 
+## Update na rolvalidatie van 30 juli 2026
+
+De kernflows zijn inmiddels per rol doorgelopen en vastgelegd in `ROLE_FLOW_VALIDATION.md`. Het gebruikstestscript met scenario's en open organisatievragen staat in `USER_TEST_SCRIPT.md`.
+
+Sinds de oorspronkelijke controle zijn onder andere dossierfallback, generieke cliëntdata, rechtenfeedback, rolgebonden knoppen en taken, vroegtijdige taakafronding, uitnodigingsvalidatie, afspraakuitkomsten, datumvalidaties, parallelle taakupdates, administratieve least-privilegeweergave en historische rapportageperioden verbeterd.
+
+De opdracht blijft bewust niet als volledig voltooid gemarkeerd. Echte gebruikerstests, server-side autorisatie, bronintegraties, async loading/error/sync, volledige audittrail, documentflow en formele incidentgovernance ontbreken nog.
+
 ## Conclusie
 
 De opdracht is nog niet volledig uitgevoerd. De basisrichting is bruikbaar, maar alleen het dashboard heeft een document met de 21 gevraagde onderdelen. Ook dat document beantwoordt niet iedere onderliggende vraag afzonderlijk en beschrijft deels gewenst gedrag dat nog niet in het prototype is geïmplementeerd.
@@ -10,24 +18,24 @@ De opdracht is nog niet volledig uitgevoerd. De basisrichting is bruikbaar, maar
 |---|---|---|
 | Alle genoemde gebruikersrollen | Voldaan | Rollen zijn toegevoegd; echte autorisatie ontbreekt nog |
 | Informatie binnen vijf seconden | Voldaan | Urgentie en directe acties staan bovenaan |
-| Dagelijkse, wekelijkse en maandelijkse informatie per rol | Niet voldaan | Frequentiematrix ontbreekt |
-| Kritiek versus aanvullende informatie | Deels | Prioriteit bestaat, maar niet expliciet per rol onderbouwd |
-| Beslissingen en frustraties per rol | Deels | Alleen korte user stories, geen volledige beslismatrix |
+| Dagelijkse, wekelijkse en maandelijkse informatie per rol | Deels | Dagflows zijn uitgewerkt; week-/maandfrequenties moeten met medewerkers worden gevalideerd |
+| Kritiek versus aanvullende informatie | Deels | Kritieke signalen en werk staan bovenaan; prioriteit wacht op praktijkvalidatie |
+| Beslissingen en frustraties per rol | Deels | Kerntaken en beslismomenten zijn uitgewerkt; frustraties moeten uit gebruikerstests komen |
 | Alle vereenvoudigingsvragen per pagina | Niet voldaan | Niet per vraag en niet voor alle pagina's uitgevoerd |
 | Iedere knop verantwoorden | Niet voldaan | Button-audit ontbreekt |
-| Volledige flow inclusief terug, opnieuw openen, fouten en opslag | Deels | Hoofdroutes werken; herstelroutes ontbreken |
-| Alle edge cases per flow | Niet voldaan | Offline, conflicten, verwijderen en API-fouten zijn niet uitgewerkt |
+| Volledige flow inclusief terug, opnieuw openen, fouten en opslag | Deels | Kritieke taak-, melding-, afspraak-, intake- en uitstroomflows zijn hertest; serverherstel ontbreekt |
+| Alle edge cases per flow | Deels | Ongeldige URL's, conflicten, datumfouten, duplicaten en offlinewaarschuwing bestaan; API-fouten ontbreken |
 | Rechten en geen-toegangstatus | Deels | Alleen client-side RoleGate |
-| Empty states | Deels | Niet overal aanwezig of onderscheidend |
-| Loading, foutmelding en opnieuw proberen | Niet voldaan | Niet structureel aangesloten |
-| Offline gedrag | Niet voldaan | Geen betrouwbare offline-status of wachtrij |
+| Empty states | Deels | Kernlijsten en dossiers onderscheiden geen resultaat en niet gevonden; nog niet iedere deelcomponent |
+| Loading, foutmelding en opnieuw proberen | Deels | Route-loading bestaat; API-fout en opnieuw proberen wachten op een echte API-laag |
+| Offline gedrag | Deels | De interface waarschuwt dat lokale opslag niet synchroniseert; veilige wachtrij ontbreekt |
 | Nielsen, Hick, Fitts en progressive disclosure aantoonbaar | Deels | Principes deels zichtbaar, geen formele heuristiek-audit |
 | Informatiearchitectuur | Deels | Rollen en navigatie verbeterd; alle routes nog niet gevalideerd |
-| Workflow van binnenkomst tot vertrek per rol | Niet voldaan | Volledige rolworkflows en frequenties ontbreken |
-| Audit met tien scores en herhaling | Deels | Scores bestaan, maar geen gebruikerstest en hertest |
+| Workflow van binnenkomst tot vertrek per rol | Deels | Gewenste rolflows en prototypedekking zijn beschreven; enkele operationele stappen ontbreken |
+| Audit met tien scores en herhaling | Deels | Tien scores en technische hertest bestaan; validatie met echte medewerkers ontbreekt |
 | Schaalbaarheid en componenthergebruik | Deels | Grote pagina-componenten moeten verder worden opgesplitst |
-| Lazy loading, caching en minimale API-calls | Niet voldaan | Routes worden nog direct geladen; echte API-laag ontbreekt |
-| Accessibility | Deels | Skiplink en labels bestaan; tekstgrootte en aanraakdoelen zijn vaak te klein |
+| Lazy loading, caching en minimale API-calls | Deels | Routes worden lazy geladen; echte API-, cache- en pagineringslaag ontbreekt |
+| Accessibility | Deels | Skiplink, H1, labels en grotere kerndoelen bestaan; screenreader- en toetsenbord-QA blijft nodig |
 | Mobiel en desktop gevalideerd | Deels | Responsive opbouw bestaat; brede tabellen en echte apparaattests ontbreken |
 | Alle 21 onderdelen voor iedere pagina | Niet voldaan | Alleen dashboarddocument bestaat |
 | Pas verder na volledige validatie | Niet voldaan | Meerdere pagina's zijn gebouwd vóór volledige pagina-audits |

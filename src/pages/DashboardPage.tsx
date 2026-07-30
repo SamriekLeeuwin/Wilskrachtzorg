@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Avatar, Box, Button, Chip, Divider, LinearProgress, Stack, Typography } from '@mui/material'
+import { Alert, Avatar, Box, Button, Chip, Divider, LinearProgress, Stack, Typography } from '@mui/material'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import Groups2RoundedIcon from '@mui/icons-material/Groups2Rounded'
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
@@ -16,21 +16,17 @@ import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
 import {
   dataCompleteness, filterTrajectories, formatMonths, getDataQualityIssues, incidents, median, monthsBetween, workItems,
-  type Filters,
+  workItemVisibleForRole, type Filters,
 } from '../data/careInsights'
-import { loadTrajectories, loadWorkQueue } from '../data/demoStore'
+import { loadReports, loadTrajectories, loadWorkQueue } from '../data/demoStore'
 import { deriveSignals } from '../data/signals'
 import { useWorkspaceRole, type WorkspaceRole } from '../context/RoleContext'
+import { normalizeCareReport, type CareReport } from '../data/reports'
 
 const roleFocus = {
-  Woonbegeleider: 'Start bij de jongeren, afspraken en acties die tijdens jouw dienst direct opvolging nodig hebben.',
-  'Ambulant begeleider': 'Start bij jouw afspraken, open acties en informatie die je vóór een bezoek nodig hebt.',
-  Begeleider: 'Start bij jouw open acties, afspraken en jongeren die vandaag opvolging nodig hebben.',
+  Begeleider: 'Registreer wat u waarneemt en ziet direct welke dossiers, signalen, afspraken en taken opvolging nodig hebben.',
   Gedragswetenschapper: 'Start bij kritieke veiligheidssignalen, herstelopvolging en patronen in incidenten.',
-  Locatieleider: 'Start bij urgente opvolging, taakverdeling, veiligheid en achterstanden op jouw locatie.',
-  Zorgmanager: 'Stuur op achterstanden, doorstroom, werkvoorraad en betrouwbaarheid van de brondata.',
-  Management: 'Volg uitkomsten, afwijkingen ten opzichte van de norm en de oorzaken die bijsturing vragen.',
-  Administratie: 'Start bij instroom, uitstroom, ontbrekende gegevens en correcties die verwerking vragen.',
+  Zorgmanager: 'Controleer operationele opvolging en stuur op achterstanden, doorstroom en betrouwbaarheid van de vastgelegde data.',
   Directie: 'Volg de belangrijkste uitkomsten, afwijkingen ten opzichte van de norm en de onderliggende oorzaken.',
 }
 
@@ -44,6 +40,7 @@ function DashboardPage() {
   const { role } = useWorkspaceRole()
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const allTrajectories = useMemo(() => loadTrajectories(), [])
+  const reports = useMemo(() => loadReports<CareReport>([]).map(normalizeCareReport), [])
   const filtered = useMemo(() => filterTrajectories(filters, allTrajectories), [allTrajectories, filters])
   const active = filtered.filter((item) => !item.endDate)
   const completed = filtered.filter((item) => item.endDate)
@@ -54,17 +51,18 @@ function DashboardPage() {
   const overdue = active.filter((item) => new Date(item.expectedEndDate) < new Date('2026-07-28'))
   const qualityIssues = getDataQualityIssues(filtered)
   const completeness = dataCompleteness(filtered)
-  const dashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))).filter((item) => item.status === 'Open'), [])
-  const signals = useMemo(() => deriveSignals(allTrajectories, dashboardActions), [allTrajectories, dashboardActions])
-  const showManagement = ['Zorgmanager', 'Locatieleider', 'Management', 'Directie'].includes(role)
-  const showOperationalWork = !['Directie', 'Management', 'Administratie'].includes(role)
-  const isGuidanceRole = ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider'].includes(role)
-  const visibleDashboardActions = role === 'Gedragswetenschapper'
-    ? dashboardActions.filter((item) => ['UVO', 'Herstelgesprek'].includes(item.type))
-    : dashboardActions
+  const allDashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))), [])
+  const dashboardActions = allDashboardActions.filter((item) => item.status === 'Open')
+  const signals = useMemo(() => deriveSignals(allTrajectories, allDashboardActions), [allTrajectories, allDashboardActions])
+  const showManagement = ['Zorgmanager', 'Directie'].includes(role)
+  const showOperationalWork = role !== 'Directie'
+  const isGuidanceRole = role === 'Begeleider'
+  const visibleDashboardActions = dashboardActions.filter((item) => workItemVisibleForRole(item, role))
   const roleSignals = role === 'Gedragswetenschapper'
     ? signals.filter((item) => item.type === 'Veiligheid')
-    : signals
+    : role === 'Begeleider'
+      ? signals.filter((item) => item.owner !== 'Nog toe te wijzen')
+      : signals
 
   const originSummary = useMemo(() => {
     const all = filtered
@@ -80,17 +78,18 @@ function DashboardPage() {
     }).sort((a, b) => b.count - a.count)
   }, [filtered])
   const maxOrigin = Math.max(...originSummary.map((item) => item.count))
-  const careActionRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Begeleider', 'Zorgmanager']
+  const careActionRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']
   const dashboardShortcuts: Array<{ label: string; detail: string; to: string; icon: ReactNode; roles: WorkspaceRole[] }> = [
     { label: 'Melding registreren', detail: 'Veiligheids-, zorg- of datamelding', to: '/melden', icon: <CampaignRoundedIcon />, roles: careActionRoles },
-    { label: 'Taak aanmaken', detail: 'Actiehouder en deadline vastleggen', to: '/acties/nieuw', icon: <AddTaskRoundedIcon />, roles: careActionRoles },
+    { label: 'Taak aanmaken', detail: 'Verantwoordelijke en deadline vastleggen', to: '/acties/nieuw', icon: <AddTaskRoundedIcon />, roles: careActionRoles },
     { label: 'Afspraak plannen', detail: 'Genodigden en contactgegevens', to: '/jongeren?actie=afspraak', icon: <EventAvailableRoundedIcon />, roles: careActionRoles },
-    { label: 'Cliëntdossier openen', detail: 'Dossier zoeken en inzien', to: '/jongeren', icon: <FolderOpenRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
-    { label: 'Dossiergegevens wijzigen', detail: 'Wijziging met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
-    { label: 'Nieuwe intake', detail: 'Dossier en traject starten', to: '/jongeren/nieuw', icon: <Groups2RoundedIcon />, roles: ['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie'] },
-    { label: 'Uitstroom verwerken', detail: 'Status, besluit en actie', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie'] },
-    { label: 'Rapportage openen', detail: 'Uitkomsten en afwijkingen', to: '/rapportages', icon: <ArrowForwardRoundedIcon />, roles: ['Locatieleider', 'Management', 'Directie'] },
-    { label: 'Data controleren', detail: 'Definities en ontbrekende data', to: '/kpi-overzicht', icon: <CheckCircleRoundedIcon />, roles: ['Locatieleider', 'Management', 'Administratie', 'Directie'] },
+    { label: 'Beoordelingen en besluiten', detail: 'Van registratie naar advies en besluit', to: '/beoordelingen', icon: <CheckCircleRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
+    { label: 'Cliëntdossier openen', detail: 'Dossier zoeken en inzien', to: '/jongeren', icon: <FolderOpenRoundedIcon />, roles: careActionRoles },
+    { label: 'Dossiergegevens wijzigen', detail: 'Wijziging met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon />, roles: ['Zorgmanager'] },
+    { label: 'Nieuwe intake', detail: 'Dossier en traject starten', to: '/jongeren/nieuw', icon: <Groups2RoundedIcon />, roles: ['Zorgmanager'] },
+    { label: 'Uitstroom en vervolgplek', detail: 'Voortgang bekijken of verwerken', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Begeleider', 'Zorgmanager'] },
+    { label: 'Rapportage openen', detail: 'Uitkomsten en afwijkingen', to: '/rapportages', icon: <ArrowForwardRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
+    { label: 'Data controleren', detail: 'Definities en ontbrekende data', to: '/kpi-overzicht', icon: <CheckCircleRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
   ]
   const visibleShortcuts = dashboardShortcuts.filter((item) => item.roles.includes(role))
 
@@ -107,6 +106,12 @@ function DashboardPage() {
           </Button>
         )}
       </Stack>
+
+      {role === 'Directie' && (
+        <Alert severity="warning">
+          Bestuurlijke besluiten over ernstige of meldplichtige incidenten en eventuele IGJ-opvolging zijn nog niet als formele workflow gekoppeld. Dit prototype toont alleen aggregaten.
+        </Alert>
+      )}
 
       {visibleShortcuts.length > 0 && (
         <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
@@ -125,6 +130,33 @@ function DashboardPage() {
         </Box>
       )}
 
+      <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1.5}>
+          <Box>
+            <Typography sx={{ fontSize: 14.5, fontWeight: 780, color: '#172c42' }}>Dataketen van registratie tot besluit</Typography>
+            <Typography sx={{ mt: .3, fontSize: 10.7, color: '#8492a2' }}>
+              {role === 'Directie'
+                ? 'Alleen geaggregeerde aantallen; cliëntgegevens en inhoud zijn afgeschermd. Dit zijn lokale prototypeconcepten en ze tellen niet mee in het bronbevestigde incidentcijfer.'
+                : 'Iedere stap heeft een status, rol en tijdstip en blijft terug te vinden in het dossier.'}
+            </Typography>
+          </Box>
+          {['Gedragswetenschapper', 'Zorgmanager'].includes(role) && <Button component={RouterLink} to="/beoordelingen" size="small" endIcon={<ArrowForwardRoundedIcon />}>Open werkvoorraad</Button>}
+        </Stack>
+        <Box sx={{ mt: 1.6, display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1 }}>
+          {[
+            { label: 'Geregistreerd', value: reports.length },
+            { label: 'Te beoordelen', value: reports.filter((item) => ['Ter beoordeling', 'Herbeoordeling nodig'].includes(item.status)).length },
+            { label: 'Advies gereed', value: reports.filter((item) => item.status === 'Advies gereed').length },
+            { label: role === 'Directie' ? 'Geëscaleerd' : 'Besluit vastgelegd', value: reports.filter((item) => role === 'Directie' ? item.managerDecision === 'Escaleren' : item.status === 'Besluit vastgelegd').length },
+          ].map((item) => (
+            <Box key={item.label} sx={{ p: 1.4, bgcolor: '#f7f9fb', borderRadius: 1.7 }}>
+              <Typography sx={{ fontSize: 9.8, color: '#7f8f9e' }}>{item.label}</Typography>
+              <Typography sx={{ mt: .2, fontSize: 20, fontWeight: 780, color: '#29465f' }}>{item.value}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
       {showManagement && <InsightFilters value={filters} onChange={setFilters} />}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
@@ -142,13 +174,6 @@ function DashboardPage() {
             <KpiCard label="Actieve dossiers" value={String(active.length)} context="Democase: dossiers binnen de werkruimte" icon={<Groups2RoundedIcon />} tone="green" />
             <KpiCard label="Doorstroomsignalen" value={String(roleSignals.filter((item) => item.type === 'Doorstroom').length)} context="Vervolgplek of einddatum vraagt opvolging" icon={<HomeWorkRoundedIcon />} tone="amber" />
           </>
-        ) : role === 'Administratie' ? (
-          <>
-            <KpiCard label="Actieve dossiers" value={String(active.length)} context="Beschikbaar voor administratieve verwerking" icon={<Groups2RoundedIcon />} tone="blue" />
-            <KpiCard label="Datacontroles" value={String(qualityIssues.length)} context="Ontbrekende of conflicterende velden" icon={<AssignmentLateRoundedIcon />} tone={qualityIssues.length ? 'amber' : 'green'} />
-            <KpiCard label="Datacompleetheid" value={`${completeness}%`} context="Verplichte trajectvelden gevuld" icon={<CheckCircleRoundedIcon />} tone="green" />
-            <KpiCard label="Uitstroomdossiers" value={String(needsPlacement.length)} context="Vervolgplek of besluit vraagt verwerking" icon={<HomeWorkRoundedIcon />} tone="amber" />
-          </>
         ) : (
           <>
             <KpiCard label="Open veiligheidssignalen" value={String(roleSignals.length)} context="Inhoudelijke beoordeling of herstelopvolging nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
@@ -164,10 +189,10 @@ function DashboardPage() {
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 2.2 }}>
             <Box>
-              <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Acties die aandacht vragen</Typography>
-              <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3 }}>Gesorteerd op urgentie · eigenaar en deadline zichtbaar</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Taken die aandacht vragen</Typography>
+              <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3 }}>Gesorteerd op urgentie · verantwoordelijke en deadline zichtbaar</Typography>
             </Box>
-            <Button component={RouterLink} to="/acties" endIcon={<ArrowForwardRoundedIcon />} size="small" sx={{ fontSize: 11.5 }}>Alle acties</Button>
+            <Button component={RouterLink} to="/acties" endIcon={<ArrowForwardRoundedIcon />} size="small" sx={{ fontSize: 11.5 }}>Alle taken</Button>
           </Stack>
           <Divider />
           <Box>
@@ -195,6 +220,13 @@ function DashboardPage() {
                 </Stack>
               )
             })}
+            {!visibleDashboardActions.length && (
+              <Box sx={{ px: 2.5, py: 4, textAlign: 'center' }}>
+                <CheckCircleRoundedIcon sx={{ color: '#4f9278' }} />
+                <Typography sx={{ mt: .7, fontSize: 11.5, color: '#6e8192' }}>Geen openstaande taken voor deze rol.</Typography>
+                <Typography sx={{ mt: .25, fontSize: 10, color: '#93a0ab' }}>Dit betekent niet dat de bron onbereikbaar is; de prototypewerkvoorraad is geladen.</Typography>
+              </Box>
+            )}
           </Box>
         </Box>
         )}
@@ -202,7 +234,7 @@ function DashboardPage() {
         {showManagement && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.5 }}>
           <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Herkomst & verblijfsduur</Typography>
-          <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3, mb: 2.25 }}>Trajecten per verwijzende gemeente</Typography>
+          <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3, mb: 2.25 }}>Trajecten per gemeente vóór instroom</Typography>
           <Stack spacing={2}>
             {originSummary.map((item) => (
               <Box key={item.origin}>
@@ -221,7 +253,7 @@ function DashboardPage() {
 
       {showManagement && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
         {[
-          { label: 'Doorstroom', value: `${arranged.length} plekken definitief`, detail: `${needsPlacement.length} dossiers vragen nog actie`, link: '/uitstroom-registratie' },
+          { label: 'Doorstroom', value: `${arranged.length} plekken definitief`, detail: `${needsPlacement.length} dossiers vragen nog actie`, link: role === 'Directie' ? '/rapportages' : '/uitstroom-registratie' },
           { label: 'Veiligheid', value: `${incidents.filter((item) => item.measure === 'Aantekening' && item.date >= '2026-04-29' && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} actieve aantekeningen`, detail: `${incidents.filter((item) => item.recoveryRequired && !item.recoveryCompleted && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} herstelacties open`, link: '/gedrag-analyse' },
           { label: 'Datakwaliteit', value: `${completeness}% compleet`, detail: `${qualityIssues.length} controles vragen aandacht`, link: '/kpi-overzicht' },
         ].map((item) => (

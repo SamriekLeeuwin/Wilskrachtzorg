@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Box, Chip, CssBaseline, Drawer, FormControl, IconButton, List, MenuItem, Select,
+  Alert, AppBar, Box, Chip, CssBaseline, Drawer, FormControl, IconButton, List, MenuItem, Select,
   ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from '@mui/material'
@@ -19,33 +19,36 @@ import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
 import type { ReactNode } from 'react'
 import { useWorkspaceRole, workspaceRoles, type WorkspaceRole } from '../context/RoleContext'
+import LoadingState from '../components/dashboard/LoadingState'
 
 type MenuItem = { label: string; to: string; icon: ReactNode; badge?: number; roles: WorkspaceRole[] }
 const drawerWidth = 248
-const allRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Management', 'Administratie', 'Directie']
-const careRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']
+const allRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Directie']
+const careRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']
 
 const primaryItems: MenuItem[] = [
   { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon />, roles: allRoles },
-  { label: 'Mijn werkvoorraad', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, badge: 5, roles: careRoles },
-  { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, badge: 6, roles: careRoles },
-  { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon />, roles: [...careRoles, 'Administratie'] },
-  { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon />, roles: ['Locatieleider', 'Management', 'Directie'] },
-  { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon />, roles: ['Locatieleider', 'Management', 'Directie'] },
-  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, badge: 3, roles: ['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie'] },
-  { label: 'Gedrag & opvolging', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, badge: 2, roles: ['Gedragswetenschapper', 'Locatieleider'] },
-  { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon />, roles: ['Locatieleider', 'Management', 'Administratie', 'Directie'] },
+  { label: 'Openstaande taken', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, roles: careRoles },
+  { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, roles: careRoles },
+  { label: 'Beoordelingen & besluiten', to: '/beoordelingen', icon: <FactCheckRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon />, roles: careRoles },
+  { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
+  { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
+  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Begeleider', 'Zorgmanager'] },
+  { label: 'Incidenten & herstel', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager', 'Directie'] },
+  { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
 ]
 
 const pageMeta: Record<string, { title: string; eyebrow: string }> = {
   '/': { title: 'Dashboardoverzicht', eyebrow: 'OVERZICHT' },
-  '/acties': { title: 'Werkvoorraad', eyebrow: 'ACTIES & BESLUITEN' },
-  '/acties/nieuw': { title: 'Nieuwe taak', eyebrow: 'ACTIES & BESLUITEN' },
+  '/acties': { title: 'Openstaande taken', eyebrow: 'TAKEN & BESLUITEN' },
+  '/acties/nieuw': { title: 'Nieuwe taak', eyebrow: 'TAKEN & BESLUITEN' },
   '/signalen': { title: 'Automatische signalen', eyebrow: 'RISICO & OPVOLGING' },
+  '/beoordelingen': { title: 'Beoordelingen en besluiten', eyebrow: 'DATA & BESLUITVORMING' },
   '/jongeren': { title: 'Jongeren', eyebrow: 'CLIËNTEN' },
   '/rapportages': { title: 'Managementrapportage', eyebrow: 'STUREN & VERANTWOORDEN' },
   '/uitstroom-registratie': { title: 'Uitstroom & vervolgplek', eyebrow: 'DOORSTROOM' },
-  '/gedrag-analyse': { title: 'Gedrag & opvolging', eyebrow: 'VEILIGHEID' },
+  '/gedrag-analyse': { title: 'Incidenten en herstelopvolging', eyebrow: 'VEILIGHEID' },
   '/fase-overzicht': { title: 'Fases & ontwikkeling', eyebrow: 'TRAJECTEN' },
   '/jongere-timeline': { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' },
   '/begeleiders': { title: 'Medewerkers', eyebrow: 'ORGANISATIE' },
@@ -60,6 +63,7 @@ function DashboardLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
   const { role, setRole } = useWorkspaceRole()
+  const [online, setOnline] = useState(() => navigator.onLine)
   const meta = location.pathname.endsWith('/uitnodigingen')
     ? { title: 'Uitnodigingen beheren', eyebrow: 'AFSPRAAK & DEELNEMERS' }
     : location.pathname === '/melden'
@@ -78,6 +82,17 @@ function DashboardLayout() {
       ? { title: 'Taak wijzigen', eyebrow: 'ACTIES & BESLUITEN' }
     : pageMeta[location.pathname] ?? pageMeta['/']
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true)
+    const handleOffline = () => setOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#0b315d', color: '#fff' }}>
@@ -135,27 +150,28 @@ function DashboardLayout() {
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1, display: { md: 'none' } }} aria-label="Open navigatie"><MenuRoundedIcon /></IconButton>
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ color: '#8090a4', fontWeight: 800, fontSize: 9.5, letterSpacing: '.12em', lineHeight: 1.2 }}>{meta.eyebrow}</Typography>
-            <Typography sx={{ color: '#12243a', fontWeight: 760, fontSize: { xs: 20, md: 23 }, letterSpacing: '-.025em', mt: .25 }}>{meta.title}</Typography>
+            <Typography component="h1" sx={{ m: 0, color: '#12243a', fontWeight: 760, fontSize: { xs: 20, md: 23 }, letterSpacing: '-.025em', mt: .25 }}>{meta.title}</Typography>
           </Box>
           {careRoles.includes(role) && (
             <Tooltip title="Openstaande signalen">
-              <IconButton component={NavLink} to="/signalen" aria-label="Open automatische signalen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
+              <IconButton component={NavLink} to="/signalen" aria-label="Open automatische signalen" sx={{ border: '1px solid #e5eaf0', width: 44, height: 44, mr: 1.5 }}>
                 <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
-                <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#dc6b48', border: '1px solid #fff' }} />
               </IconButton>
             </Tooltip>
           )}
+          <Tooltip title="Prototypeweergave: dit is geen echte aanmelding of autorisatie.">
           <FormControl size="small" sx={{ minWidth: { xs: 132, md: 190 }, maxWidth: { xs: 150, md: 220 }, mr: { xs: .7, md: 1.5 } }}>
             <Select
               value={role}
               onChange={(event) => setRole(event.target.value as WorkspaceRole)}
               inputProps={{ 'aria-label': 'Bekijk werkruimte als rol' }}
-              sx={{ height: 38, bgcolor: '#fff', fontSize: { xs: 10.5, md: 12 } }}
+              sx={{ height: 44, bgcolor: '#fff', fontSize: { xs: 11.5, md: 12.5 } }}
             >
               {workspaceRoles.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </Select>
           </FormControl>
-          <Chip label="Data t/m 28 jul" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eff5fb', color: '#41617f', fontSize: 11, border: '1px solid #dae6f0' }} />
+          </Tooltip>
+          <Chip label="Prototype · peildatum 28 jul 2026" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eff5fb', color: '#41617f', fontSize: 11, border: '1px solid #dae6f0' }} />
         </Toolbar>
       </AppBar>
 
@@ -167,7 +183,16 @@ function DashboardLayout() {
       <Box component="main" id="main-content" sx={{ flexGrow: 1, minWidth: 0, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
         <Toolbar sx={{ minHeight: { xs: 68, md: 76 } }} />
         <Box sx={{ px: { xs: 2, sm: 3, xl: 4 }, py: { xs: 2.5, md: 3.5 } }}>
-          <Box sx={{ maxWidth: 1420, mx: 'auto' }}><Outlet /></Box>
+          <Box sx={{ maxWidth: 1420, mx: 'auto' }}>
+            {!online && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Geen internetverbinding. Wijzigingen in deze demo worden alleen op dit apparaat bewaard en zijn niet gesynchroniseerd met een bronsysteem.
+              </Alert>
+            )}
+            <Suspense fallback={<LoadingState />}>
+              <Outlet />
+            </Suspense>
+          </Box>
         </Box>
       </Box>
     </Box>
