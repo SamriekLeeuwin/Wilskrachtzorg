@@ -14,6 +14,7 @@ const capacities = { Tilburg: 12, Breda: 10, Eindhoven: 8 } as const
 function LocatiesPage() {
   const { role } = useWorkspaceRole()
   const canOpenOperationalDetails = role === 'Zorgmanager'
+  const protectSmallGroup = (value: number) => role === 'Directie' && value > 0 && value < 5 ? '<5' : String(value)
   const trajectories = useMemo(() => loadTrajectories(), [])
   const rows = Object.entries(capacities).map(([location, capacity]) => {
     const active = trajectories.filter((item) => !item.endDate && item.location === location)
@@ -42,7 +43,7 @@ function LocatiesPage() {
           <TableBody>{rows.map((row) => <TableRow key={row.location} hover>
             <TableCell sx={{ fontWeight: 750 }}>{row.location}</TableCell>
             <TableCell sx={{ minWidth: 150 }}><Stack direction="row" spacing={1} alignItems="center"><LinearProgress variant="determinate" value={Math.min(row.occupancy, 100)} sx={{ width: 80, height: 7, borderRadius: 8 }} /><Typography sx={{ fontSize: 10.5 }}>{row.occupancy}%</Typography></Stack></TableCell>
-            <TableCell>{row.active}</TableCell><TableCell>{row.available}</TableCell><TableCell>{row.incidents}</TableCell><TableCell>{row.overdue}</TableCell>
+            <TableCell>{protectSmallGroup(row.active)}</TableCell><TableCell>{protectSmallGroup(row.available)}</TableCell><TableCell>{protectSmallGroup(row.incidents)}</TableCell><TableCell>{protectSmallGroup(row.overdue)}</TableCell>
             <TableCell><Chip label={row.occupancy >= 90 || row.overdue >= 2 ? 'Aandacht' : 'Stabiel'} size="small" sx={{ height: 21, fontSize: 10, bgcolor: row.occupancy >= 90 || row.overdue >= 2 ? '#fff3e5' : '#eaf6f1', color: row.occupancy >= 90 || row.overdue >= 2 ? '#925b1d' : '#28745d' }} /></TableCell>
             {canOpenOperationalDetails && <TableCell><Button component={RouterLink} to={`/jongeren?location=${encodeURIComponent(row.location)}`} size="small">Open dossiers</Button></TableCell>}
           </TableRow>)}</TableBody>

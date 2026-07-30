@@ -40,6 +40,7 @@ export default function VervolgplekBijwerkenPage() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [closureConfirmed, setClosureConfirmed] = useState(false)
+  const selected = trajectories.find((item) => item.clientCode === values.clientCode)
   const requiresProvider = ['Definitief akkoord', 'Geplaatst'].includes(values.status)
   const isPlaced = values.status === 'Geplaatst'
   const today = new Date().toISOString().slice(0, 10)
@@ -58,6 +59,7 @@ export default function VervolgplekBijwerkenPage() {
     values.decisionBy.trim() && values.evidenceReference.trim() &&
     values.nextAction.trim() && values.owner && values.dueDate &&
     values.date <= today && values.dueDate >= values.date &&
+    Boolean(selected?.startDate && values.plannedOutflow >= selected.startDate) &&
     (!requiresProvider || (values.followUpType.trim() && values.provider.trim())) &&
     (!isPlaced || (values.actualOutflowDate && values.actualOutflowDate <= today && values.outcome && closureConfirmed))
   )
@@ -132,8 +134,6 @@ export default function VervolgplekBijwerkenPage() {
     navigate(`/jongeren/${values.clientCode}?placement=updated`)
   }
 
-  const selected = trajectories.find((item) => item.clientCode === values.clientCode)
-
   if ((requestedCode && !initialTrajectory) || !trajectories.length) {
     return (
       <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', py: { xs: 2, md: 5 } }}>
@@ -150,7 +150,7 @@ export default function VervolgplekBijwerkenPage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Vervolgplek en besluit bijwerken</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>Eén invoer werkt de monitor, het dossier en de werkvoorraad samen bij.</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Vul status, geldige datums, besluitnemer, bewijs, vervolgtaak, taakverantwoordelijke en deadline volledig in. Een plaatsing vereist een type, aanbieder, uitstroomdatum van vandaag of eerder en expliciete afsluitbevestiging.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Vul status, geldige datums, besluitnemer, bewijs, vervolgtaak, taakverantwoordelijke en deadline volledig in. De gewenste uitstroom mag niet vóór de trajectstart liggen. Een plaatsing vereist daarnaast een aanbieder, werkelijke datum en afsluitbevestiging.</Alert>}
       {initialTrajectory?.endDate && !isPlaced && <Alert severity="warning">U heropent hiermee een afgesloten traject. De eerdere uitstroomdatum en uitkomst worden verwijderd; leg reden en bewijs volledig vast.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>

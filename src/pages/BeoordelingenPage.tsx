@@ -9,7 +9,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { useWorkspaceRole } from '../context/RoleContext'
 import { loadReports, saveReports } from '../data/demoStore'
 import {
-  normalizeCareReport, type CareReport, type CareReportStatus, type ManagerDecision,
+  normalizeCareReport, type CareReport, type CareReportStatus, type DirectorDecision, type ManagerDecision,
 } from '../data/reports'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
@@ -17,6 +17,7 @@ const statusTone: Record<CareReportStatus, { background: string; color: string }
   'Ter beoordeling': { background: '#fff3e5', color: '#925b1d' },
   'Advies gereed': { background: '#edf4fa', color: '#376b95' },
   'Herbeoordeling nodig': { background: '#fbecea', color: '#a44539' },
+  'Escalatie directie': { background: '#f7eafb', color: '#76438a' },
   'Besluit vastgelegd': { background: '#eaf6f1', color: '#28745d' },
 }
 
@@ -32,21 +33,31 @@ export default function BeoordelingenPage() {
   const [recommendation, setRecommendation] = useState('')
   const [managerDecision, setManagerDecision] = useState<ManagerDecision>('Akkoord')
   const [managerNote, setManagerNote] = useState('')
+  const [directorDecision, setDirectorDecision] = useState<DirectorDecision>('Maatregel akkoord')
+  const [directorNote, setDirectorNote] = useState('')
   const [message, setMessage] = useState('')
   const [conflict, setConflict] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
   const visibleReports = useMemo(
-    () => reports.filter((report) => role === 'Zorgmanager' || report.kind !== 'Datacorrectie'),
+    () => reports.filter((report) =>
+      role === 'Directie'
+        ? report.status === 'Escalatie directie' || Boolean(report.directorDecision)
+        : role === 'Zorgmanager' || report.kind !== 'Datacorrectie'
+    ),
     [reports, role],
   )
   const awaitingReview = visibleReports.filter((report) => ['Ter beoordeling', 'Herbeoordeling nodig'].includes(report.status)).length
   const awaitingDecision = visibleReports.filter((report) => report.status === 'Advies gereed').length
+  const awaitingDirector = visibleReports.filter((report) => report.status === 'Escalatie directie').length
+  const directorDecided = visibleReports.filter((report) => Boolean(report.directorDecision)).length
   const dirty = Boolean(selected && (
     assessment !== (selected.clinicalAssessment ?? '') ||
     recommendation !== (selected.recommendation ?? '') ||
     managerDecision !== (selected.managerDecision ?? 'Akkoord') ||
     managerNote !== (selected.managerDecisionNote ?? '')
+    || directorDecision !== (selected.directorDecision ?? 'Maatregel akkoord')
+    || directorNote !== (selected.directorDecisionNote ?? '')
   ))
   useUnsavedChangesWarning(dirty)
 
@@ -56,6 +67,8 @@ export default function BeoordelingenPage() {
     setRecommendation(report.recommendation ?? '')
     setManagerDecision(report.managerDecision ?? 'Akkoord')
     setManagerNote(report.managerDecisionNote ?? '')
+    setDirectorDecision(report.directorDecision ?? 'Maatregel akkoord')
+    setDirectorNote(report.directorDecisionNote ?? '')
     setSubmitted(false)
     setConflict('')
   }
@@ -108,7 +121,9 @@ export default function BeoordelingenPage() {
     if (selected.kind !== 'Datacorrectie' && selected.status !== 'Advies gereed') return
     const saved = updateLatest((report, now) => ({
       ...report,
-      status: managerDecision === 'Terug voor herbeoordeling' ? 'Herbeoordeling nodig' : 'Besluit vastgelegd',
+      status: managerDecision === 'Terug voor herbeoordeling'
+        ? 'Herbeoordeling nodig'
+        : managerDecision === 'Escaleren' ? 'Escalatie directie' : 'Besluit vastgelegd',
       managerDecision,
       managerDecisionNote: managerNote.trim(),
       decidedByRole: 'Zorgmanager',
@@ -118,7 +133,25 @@ export default function BeoordelingenPage() {
     if (!saved) return
     setMessage(managerDecision === 'Terug voor herbeoordeling'
       ? 'De registratie is met toelichting teruggezet voor inhoudelijke herbeoordeling.'
-      : 'Het besluit van de zorgmanager is vastgelegd en terug te zien in het cliëntdossier.')
+      : managerDecision === 'Escaleren'
+        ? 'De casus is met een beperkte beslissamenvatting naar de directie geëscaleerd.'
+        : 'Het besluit van de zorgmanager is vastgelegd en terug te zien in het cliëntdossier.')
+    close()
+  }
+
+  const saveDirectorDecision = () => {
+    setSubmitted(true)
+    if (!selected || selected.status !== 'Escalatie directie' || !directorNote.trim()) return
+    const saved = updateLatest((report, now) => ({
+      ...report,
+      status: directorDecision === 'Aanvullende beoordeling nodig' ? 'Herbeoordeling nodig' : 'Besluit vastgelegd',
+      directorDecision,
+      directorDecisionNote: directorNote.trim(),
+      decidedByDirectorAt: now,
+      updatedAt: now,
+    }))
+    if (!saved) return
+    setMessage('Het bestuurlijke besluit is vastgelegd. De zorgmanager blijft verantwoordelijk voor uitvoering en dossieropvolging.')
     close()
   }
 
@@ -127,7 +160,9 @@ export default function BeoordelingenPage() {
       <Box>
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Beoordelingen en besluiten</Typography>
         <Typography sx={{ mt: .4, maxWidth: 820, fontSize: 11.2, lineHeight: 1.6, color: '#718395' }}>
-          Hier wordt zichtbaar hoe vastgelegde gegevens door de rollen gaan: registratie, inhoudelijke beoordeling, advies en zorgmanagementbesluit.
+          {role === 'Directie'
+            ? 'Hier staan uitsluitend geëscaleerde beslispunten. Operationele dossierdetails blijven afgeschermd.'
+            : 'Hier wordt zichtbaar hoe vastgelegde gegevens door de rollen gaan: registratie, inhoudelijke beoordeling, advies en zorgmanagementbesluit.'}
         </Typography>
       </Box>
 
@@ -139,12 +174,12 @@ export default function BeoordelingenPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
         <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.2 }}>
-          <Typography sx={{ fontSize: 10.5, color: '#8191a0' }}>Wacht op inhoudelijke beoordeling</Typography>
-          <Typography sx={{ mt: .3, fontSize: 24, fontWeight: 790, color: '#925b1d' }}>{awaitingReview}</Typography>
+          <Typography sx={{ fontSize: 10.5, color: '#8191a0' }}>{role === 'Directie' ? 'Wacht op bestuurlijk besluit' : 'Wacht op inhoudelijke beoordeling'}</Typography>
+          <Typography sx={{ mt: .3, fontSize: 24, fontWeight: 790, color: '#925b1d' }}>{role === 'Directie' ? awaitingDirector : awaitingReview}</Typography>
         </Box>
         <Box sx={{ p: 2, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.2 }}>
-          <Typography sx={{ fontSize: 10.5, color: '#8191a0' }}>Advies gereed voor besluit</Typography>
-          <Typography sx={{ mt: .3, fontSize: 24, fontWeight: 790, color: '#376b95' }}>{awaitingDecision}</Typography>
+          <Typography sx={{ fontSize: 10.5, color: '#8191a0' }}>{role === 'Directie' ? 'Bestuurlijke besluiten vastgelegd' : 'Advies gereed voor besluit'}</Typography>
+          <Typography sx={{ mt: .3, fontSize: 24, fontWeight: 790, color: '#376b95' }}>{role === 'Directie' ? directorDecided : awaitingDecision}</Typography>
         </Box>
       </Box>
 
@@ -175,16 +210,18 @@ export default function BeoordelingenPage() {
                     </Typography>
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 10, color: '#6d8192' }}>{report.kind} · {report.clientCode}</Typography>
+                    <Typography sx={{ fontSize: 10, color: '#6d8192' }}>{report.kind}{role === 'Directie' ? ' · bestuurlijke escalatie' : ` · ${report.clientCode}`}</Typography>
                     <Typography sx={{ mt: .25, fontSize: 12.2, fontWeight: 730, color: '#294157' }}>{report.subject}</Typography>
-                    <Typography sx={{ mt: .35, fontSize: 10.5, color: '#718497' }}>{report.description}</Typography>
+                    {role !== 'Directie' && <Typography sx={{ mt: .35, fontSize: 10.5, color: '#718497' }}>{report.description}</Typography>}
                     {report.recommendation && <Typography sx={{ mt: .55, fontSize: 10.3, fontWeight: 650, color: '#486d89' }}>Advies: {report.recommendation}</Typography>}
                     {report.managerDecision && <Typography sx={{ mt: .4, fontSize: 10.3, fontWeight: 700, color: '#39725f' }}>Besluit: {report.managerDecision} · {report.managerDecisionNote}</Typography>}
+                    {report.directorDecision && <Typography sx={{ mt: .4, fontSize: 10.3, fontWeight: 700, color: '#76438a' }}>Bestuurlijk besluit: {report.directorDecision} · {report.directorDecisionNote}</Typography>}
                   </Box>
                   <Stack direction="row" spacing={.8} flexWrap="wrap" useFlexGap>
-                    <Button component={RouterLink} to={`/jongeren/${report.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />}>Dossier</Button>
+                    {role !== 'Directie' && <Button component={RouterLink} to={`/jongeren/${report.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />}>Dossier</Button>}
                     {canReview && <Button size="small" variant="contained" onClick={() => openReport(report)}>Inhoudelijk beoordelen</Button>}
                     {canDecide && <Button size="small" variant="contained" onClick={() => openReport(report)}>Besluit vastleggen</Button>}
+                    {role === 'Directie' && report.status === 'Escalatie directie' && <Button size="small" variant="contained" onClick={() => openReport(report)}>Bestuurlijk besluit</Button>}
                     {role === 'Zorgmanager' && report.kind !== 'Datacorrectie' && report.status !== 'Advies gereed' && report.status !== 'Besluit vastgelegd' && (
                       <Chip label="Wacht op advies" size="small" variant="outlined" />
                     )}
@@ -205,9 +242,9 @@ export default function BeoordelingenPage() {
       <Dialog open={Boolean(selected)} onClose={close} fullWidth maxWidth="sm">
         <DialogTitle>
           <Typography sx={{ fontSize: 17, fontWeight: 760, color: '#172c42' }}>
-            {role === 'Gedragswetenschapper' ? 'Inhoudelijke beoordeling' : 'Zorgmanagementbesluit'}
+            {role === 'Gedragswetenschapper' ? 'Inhoudelijke beoordeling' : role === 'Directie' ? 'Bestuurlijk besluit' : 'Zorgmanagementbesluit'}
           </Typography>
-          <Typography sx={{ mt: .3, fontSize: 10.8, color: '#8492a2' }}>{selected?.clientCode} · {selected?.subject}</Typography>
+          <Typography sx={{ mt: .3, fontSize: 10.8, color: '#8492a2' }}>{role === 'Directie' ? 'Geëscaleerd beslispunt' : selected?.clientCode} · {selected?.subject}</Typography>
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1.8} sx={{ pt: 1 }}>
@@ -217,16 +254,17 @@ export default function BeoordelingenPage() {
             {submitted && role === 'Zorgmanager' && (
               (!managerNote.trim() || (selected?.kind !== 'Datacorrectie' && selected?.status !== 'Advies gereed'))
             ) && <Alert severity="warning">Een zorgmanagementbesluit vereist een gereed advies en een concrete toelichting.</Alert>}
+            {submitted && role === 'Directie' && (!directorNote.trim() || selected?.status !== 'Escalatie directie') && <Alert severity="warning">Leg een concreet bestuurlijk besluit met onderbouwing vast.</Alert>}
             <Box sx={{ p: 1.5, bgcolor: '#f7f9fb', borderRadius: 1.7 }}>
               <Typography sx={{ fontSize: 10.5, fontWeight: 720 }}>{selected?.kind}</Typography>
-              <Typography sx={{ mt: .45, fontSize: 10.5, lineHeight: 1.55, color: '#61778a' }}>{selected?.description}</Typography>
+              <Typography sx={{ mt: .45, fontSize: 10.5, lineHeight: 1.55, color: '#61778a' }}>{role === 'Directie' ? selected?.managerDecisionNote : selected?.description}</Typography>
             </Box>
             {role === 'Gedragswetenschapper' ? (
               <>
                 <TextField required multiline minRows={4} label="Inhoudelijke beoordeling" value={assessment} onChange={(event) => setAssessment(event.target.value)} helperText="Beschrijf de betekenis van de feiten; wijzig de oorspronkelijke registratie niet." />
                 <TextField required multiline minRows={3} label="Advies aan zorgmanager" value={recommendation} onChange={(event) => setRecommendation(event.target.value)} helperText="Maak de aanbevolen vervolgstap en urgentie concreet." />
               </>
-            ) : (
+            ) : role === 'Zorgmanager' ? (
               <>
                 {selected?.clinicalAssessment && <Alert severity="info"><strong>Beoordeling:</strong> {selected.clinicalAssessment}<br /><strong>Advies:</strong> {selected.recommendation}</Alert>}
                 <TextField select required label="Besluit" value={managerDecision} onChange={(event) => setManagerDecision(event.target.value as ManagerDecision)}>
@@ -234,15 +272,25 @@ export default function BeoordelingenPage() {
                   <MenuItem value="Terug voor herbeoordeling">Terug voor herbeoordeling</MenuItem>
                   <MenuItem value="Escaleren">Escaleren</MenuItem>
                 </TextField>
-                <TextField required multiline minRows={3} label="Toelichting en vervolgstap" value={managerNote} onChange={(event) => setManagerNote(event.target.value)} />
+                <TextField required multiline minRows={3} label={managerDecision === 'Escaleren' ? 'Bestuurlijke beslissamenvatting en gevraagde beslissing' : 'Toelichting en vervolgstap'} value={managerNote} onChange={(event) => setManagerNote(event.target.value)} helperText={managerDecision === 'Escaleren' ? 'Neem alleen informatie op die de directie nodig heeft om te besluiten; vermijd direct identificeerbare cliëntdetails.' : undefined} />
+              </>
+            ) : (
+              <>
+                <Alert severity="info"><strong>Inhoudelijk advies:</strong> {selected?.recommendation}<br /><strong>Escalatiesamenvatting:</strong> {selected?.managerDecisionNote}</Alert>
+                <TextField select required label="Bestuurlijk besluit" value={directorDecision} onChange={(event) => setDirectorDecision(event.target.value as DirectorDecision)}>
+                  <MenuItem value="Maatregel akkoord">Maatregel akkoord</MenuItem>
+                  <MenuItem value="Aanvullende beoordeling nodig">Aanvullende beoordeling nodig</MenuItem>
+                  <MenuItem value="Geen bestuurlijke maatregel">Geen bestuurlijke maatregel</MenuItem>
+                </TextField>
+                <TextField required multiline minRows={3} label="Onderbouwing en opdracht aan zorgmanager" value={directorNote} onChange={(event) => setDirectorNote(event.target.value)} />
               </>
             )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={close}>Annuleren</Button>
-          <Button variant="contained" onClick={role === 'Gedragswetenschapper' ? saveClinicalReview : saveManagerDecision}>
-            {role === 'Gedragswetenschapper' ? 'Advies vastleggen' : 'Besluit vastleggen'}
+          <Button variant="contained" onClick={role === 'Gedragswetenschapper' ? saveClinicalReview : role === 'Directie' ? saveDirectorDecision : saveManagerDecision}>
+            {role === 'Gedragswetenschapper' ? 'Advies vastleggen' : role === 'Directie' ? 'Bestuurlijk besluit vastleggen' : 'Besluit vastleggen'}
           </Button>
         </DialogActions>
       </Dialog>

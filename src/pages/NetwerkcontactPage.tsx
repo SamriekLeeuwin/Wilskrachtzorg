@@ -93,6 +93,7 @@ export default function NetwerkcontactPage() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
   const requiresFollowUp = ['Wachten op reactie', 'Aanvulling gevraagd', 'Afspraak vastgelegd'].includes(values.status) ||
     (values.status === 'Besluit ontvangen' && values.followUpAfterDecision)
   const owners = Array.from(new Set([
@@ -148,12 +149,21 @@ export default function NetwerkcontactPage() {
   const save = () => {
     setSubmitted(true)
     setSaveError('')
-    if (!valid || invalidLinkedTask || invalidCorrection) return
+    if (!valid || invalidLinkedTask || invalidCorrection || saving) return
+    setSaving(true)
 
     const createdAt = new Date().toISOString()
     const idSuffix = createdAt.replace(/\D/g, '')
     const contactId = `NC-${idSuffix}`
     const currentContacts = loadNetworkContacts()
+    const currentCorrectionTarget = correctionTarget
+      ? currentContacts.find((item) => item.id === correctionTarget.id)
+      : undefined
+    if (correctionTarget && (!currentCorrectionTarget || currentCorrectionTarget.correctedAt)) {
+      setSaveError('Deze registratie is intussen al gecorrigeerd. Open het dossier opnieuw om de nieuwste versie te bekijken.')
+      setSaving(false)
+      return
+    }
     const currentQueue = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' })))
     const currentLinkedTask = linkedTaskId
       ? currentQueue.find((item) =>
@@ -166,6 +176,7 @@ export default function NetwerkcontactPage() {
       : undefined
     if (linkedTaskId && (!currentLinkedTask || currentLinkedTask.updatedAt !== linkedTask?.updatedAt)) {
       setSaveError('Deze gekoppelde taak is intussen gewijzigd of niet meer beschikbaar. Open de actuele taak opnieuw vanuit de werkvoorraad.')
+      setSaving(false)
       return
     }
     const sourceContact = currentLinkedTask?.sourceNetworkContactId
@@ -173,6 +184,7 @@ export default function NetwerkcontactPage() {
       : undefined
     if (sourceContact?.resolvedAt) {
       setSaveError('Deze externe opvolging is intussen al verwerkt. Open het dossier opnieuw om de actuele contactketen te controleren.')
+      setSaving(false)
       return
     }
     const contact: NetworkContact = {
@@ -369,7 +381,7 @@ export default function NetwerkcontactPage() {
           </Stack>
           <Divider sx={{ my: 1.7 }} />
           <Typography sx={{ fontSize: 13, lineHeight: 1.55, color: '#657a8c' }}>{correctionTarget ? 'De correctie wordt als nieuwe versie toegevoegd; de oorspronkelijke registratie blijft raadpleegbaar.' : 'Het contactmoment komt in de dossierhistorie. Bij open opvolging wordt automatisch een rolgebonden taak toegevoegd.'}</Typography>
-          <Button fullWidth size="large" variant="contained" startIcon={<ContactPhoneRoundedIcon />} onClick={save} disabled={invalidLinkedTask || invalidCorrection} sx={{ mt: 2 }}>{correctionTarget ? 'Correctie vastleggen' : 'Contactmoment opslaan'}</Button>
+          <Button fullWidth size="large" variant="contained" startIcon={<ContactPhoneRoundedIcon />} onClick={save} disabled={invalidLinkedTask || invalidCorrection || saving} sx={{ mt: 2 }}>{saving ? 'Vastleggen…' : correctionTarget ? 'Correctie vastleggen' : 'Contactmoment opslaan'}</Button>
           <Button fullWidth component={RouterLink} to={`/jongeren/${clientCode}?tab=network`} sx={{ mt: .7 }}>Annuleren</Button>
         </Box>
       </Box>

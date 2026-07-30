@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Alert, Box, Button, Chip, Divider, MenuItem, Stack, TextField, Typography } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { Link as RouterLink, useParams } from 'react-router-dom'
-import { defaultAppointments, type CareAppointment } from '../data/appointments'
+import { appointmentInvitationsCanBeManagedByRole, defaultAppointments, type CareAppointment } from '../data/appointments'
 import { loadAppointments, saveAppointments } from '../data/demoStore'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 type InvitationStatus = 'Concept' | 'Verzonden' | 'Geaccepteerd' | 'Afgewezen'
 
@@ -16,12 +17,16 @@ const tones: Record<InvitationStatus, { bg: string; color: string }> = {
 }
 
 export default function UitnodigingenBeherenPage() {
+  const { role } = useWorkspaceRole()
   const { clientCode = '', appointmentId = '' } = useParams()
   const stored = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
   const appointment = stored.find((item) => item.id === appointmentId)
   const [invitations, setInvitations] = useState(appointment?.invitations ?? [])
   const [savedInvitations, setSavedInvitations] = useState(appointment?.invitations ?? [])
   const [saved, setSaved] = useState(false)
+  const [conflict, setConflict] = useState('')
+  const [saving, setSaving] = useState(false)
+  const canManage = Boolean(appointment && appointmentInvitationsCanBeManagedByRole(appointment, role))
   useUnsavedChangesWarning(JSON.stringify(invitations) !== JSON.stringify(savedInvitations))
 
   if (!appointment) {
@@ -40,9 +45,21 @@ export default function UitnodigingenBeherenPage() {
     setSaved(false)
   }
   const save = () => {
-    saveAppointments(clientCode, stored.map((item) => item.id === appointment.id ? { ...item, invitations } : item))
+    if (!canManage || saving) return
+    setSaving(true)
+    setConflict('')
+    const latest = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
+    const latestAppointment = latest.find((item) => item.id === appointment.id)
+    if (!latestAppointment || JSON.stringify(latestAppointment.invitations ?? []) !== JSON.stringify(savedInvitations)) {
+      setConflict('De uitnodigingen zijn intussen in een andere sessie gewijzigd. Open deze pagina opnieuw en controleer de actuele statussen.')
+      setSaving(false)
+      return
+    }
+    const updatedAt = new Date().toISOString()
+    saveAppointments(clientCode, latest.map((item) => item.id === appointment.id ? { ...item, invitations, updatedAt } : item))
     setSavedInvitations(invitations)
     setSaved(true)
+    setSaving(false)
   }
 
   return (
@@ -53,6 +70,8 @@ export default function UitnodigingenBeherenPage() {
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>{appointment.subject} · {new Date(`${appointment.date}T12:00:00`).toLocaleDateString('nl-NL')}</Typography>
       </Box>
       <Alert severity="info">In deze demo wordt geen echte e-mail of sms verzonden. Statussen worden handmatig geregistreerd en zijn geen technisch verzend- of ontvangstbewijs.</Alert>
+      {!canManage && <Alert severity="error">Uw rol mag de uitnodigingen voor dit type afspraak niet wijzigen, of de afspraak is al afgerond.</Alert>}
+      {conflict && <Alert severity="warning">{conflict}</Alert>}
       {saved && <Alert severity="success">De uitnodigingsstatussen zijn in het dossier bijgewerkt.</Alert>}
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Box sx={{ p: 2.3 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760 }}>Genodigden en reacties</Typography><Typography sx={{ mt: .25, fontSize: 10.5, color: '#8492a2' }}>Controleer contactkanaal en werk de reactie bij.</Typography></Box>
@@ -63,7 +82,7 @@ export default function UitnodigingenBeherenPage() {
             return <Stack key={item.id} direction={{ xs: 'column', md: 'row' }} alignItems={{ md: 'center' }} gap={1.5} sx={{ p: 2.2 }}>
               <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 12, fontWeight: 740 }}>{item.name}</Typography><Typography sx={{ mt: .25, fontSize: 10.3, color: '#718395' }}>{item.role} · {item.channel}: {item.contact}</Typography>{item.statusUpdatedAt && <Typography sx={{ mt: .25, fontSize: 9.3, color: '#94a0ab' }}>Handmatig bijgewerkt op {new Date(item.statusUpdatedAt).toLocaleString('nl-NL')}</Typography>}</Box>
               <Chip label={item.status} sx={{ bgcolor: tone.bg, color: tone.color }} />
-              <TextField select size="small" label="Handmatig registreren als" value={item.status} onChange={(event) => update(item.id, event.target.value as InvitationStatus)} sx={{ minWidth: 210 }}>
+              <TextField select size="small" disabled={!canManage} label="Handmatig registreren als" value={item.status} onChange={(event) => update(item.id, event.target.value as InvitationStatus)} sx={{ minWidth: 210 }}>
                 <MenuItem value="Concept" disabled={item.status !== 'Concept'}>Concept</MenuItem>
                 <MenuItem value="Verzonden" disabled={item.status === 'Geaccepteerd' || item.status === 'Afgewezen'}>Handmatig verzonden</MenuItem>
                 <MenuItem value="Geaccepteerd" disabled={item.status === 'Concept'}>Deelname bevestigd</MenuItem>
@@ -74,7 +93,7 @@ export default function UitnodigingenBeherenPage() {
           {!invitations.length && <Box sx={{ p: 4, textAlign: 'center' }}><Typography sx={{ fontSize: 11, color: '#718395' }}>Voor deze afspraak zijn geen afzonderlijke uitnodigingen vastgelegd.</Typography></Box>}
         </Stack>
         <Divider />
-        <Stack direction="row" justifyContent="flex-end" sx={{ p: 2 }}><Button variant="contained" onClick={save} disabled={!invitations.length}>Statussen opslaan</Button></Stack>
+        <Stack direction="row" justifyContent="flex-end" sx={{ p: 2 }}><Button variant="contained" onClick={save} disabled={!invitations.length || !canManage || saving}>{saving ? 'Opslaan…' : 'Statussen opslaan'}</Button></Stack>
       </Box>
     </Stack>
   )

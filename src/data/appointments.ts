@@ -20,6 +20,7 @@ export type CareAppointment = {
   followUp?: string
   completedAt?: string
   createdAt?: string
+  updatedAt?: string
   createdByRole?: WorkspaceRole
   requiredRoles?: WorkspaceRole[]
   invitations?: Array<{
@@ -34,6 +35,14 @@ export type CareAppointment = {
 }
 
 export function appointmentCanBeCompletedByRole(appointment: CareAppointment, role: WorkspaceRole) {
+  if (appointment.requiredRoles?.length) return appointment.requiredRoles.includes(role)
+  if (appointment.type === 'Mentorgesprek') return ['Begeleider', 'Zorgmanager'].includes(role)
+  if (['UVO', 'Netwerkoverleg'].includes(appointment.type)) return ['Gedragswetenschapper', 'Zorgmanager'].includes(role)
+  return ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'].includes(role)
+}
+
+export function appointmentInvitationsCanBeManagedByRole(appointment: CareAppointment, role: WorkspaceRole) {
+  if (appointment.status === 'Afgerond') return false
   if (appointment.requiredRoles?.length) return appointment.requiredRoles.includes(role)
   if (appointment.type === 'Mentorgesprek') return ['Begeleider', 'Zorgmanager'].includes(role)
   if (['UVO', 'Netwerkoverleg'].includes(appointment.type)) return ['Gedragswetenschapper', 'Zorgmanager'].includes(role)

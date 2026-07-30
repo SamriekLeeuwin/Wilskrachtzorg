@@ -32,13 +32,14 @@ export default function AfspraakAfrondenPage() {
   const [taskOwner, setTaskOwner] = useState(appointment?.owner ?? trajectory?.supervisor ?? '')
   const [taskDueDate, setTaskDueDate] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
   const owners = Array.from(new Set(loadTrajectories().map((item) => item.supervisor)))
   const canCompleteNow = Boolean(appointment && appointment.date <= new Date().toISOString().slice(0, 10))
   const valid = Boolean(
     canCompleteNow &&
     (meetingOutcome !== 'Gehouden' || attendees.trim()) &&
     summary.trim() && decision.trim() &&
-    (!createTask || (followUp.trim() && taskOwner && taskDueDate))
+    (!createTask || (followUp.trim() && taskOwner && taskDueDate && taskDueDate >= appointment!.date))
   )
   useUnsavedChangesWarning(
     meetingOutcome !== 'Gehouden' || attendees !== (appointment?.participants ?? '') || Boolean(summary.trim() || decision.trim() || followUp.trim() || createTask || taskDueDate)
@@ -75,10 +76,14 @@ export default function AfspraakAfrondenPage() {
 
   const save = () => {
     setSubmitted(true)
-    if (!valid || !canCompleteForRole) return
+    if (!valid || !canCompleteForRole || saving) return
+    setSaving(true)
     const currentAppointments = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
     const currentAppointment = currentAppointments.find((item) => item.id === appointment.id)
-    if (!currentAppointment || currentAppointment.status === 'Afgerond') return
+    if (!currentAppointment || currentAppointment.status === 'Afgerond') {
+      setSaving(false)
+      return
+    }
     const completed: CareAppointment = {
       ...currentAppointment,
       status: 'Afgerond',
@@ -140,7 +145,7 @@ export default function AfspraakAfrondenPage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>{appointment.type} afronden</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>{clientCode} · {new Date(`${appointment.date}T12:00:00`).toLocaleDateString('nl-NL')} · {appointment.time}</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Leg aanwezigen, samenvatting en besluit vast. Vul ook de vervolgtaak volledig in als u die toevoegt.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Leg aanwezigen, samenvatting en besluit vast. Een eventuele vervolgdeadline mag niet vóór de afspraak liggen.</Alert>}
       {!canCompleteNow && <Alert severity="warning">Deze afspraak staat in de toekomst en kan nog niet worden afgerond. Verplaats of annuleer de afspraak via de toekomstige agendakoppeling.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
@@ -171,7 +176,7 @@ export default function AfspraakAfrondenPage() {
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
                   <TextField select label="Type" value={taskType} onChange={(event) => setTaskType(event.target.value as WorkItem['type'])}>{followUpTypes.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField>
                   <TextField select label="Eigenaar" value={taskOwner} onChange={(event) => setTaskOwner(event.target.value)}>{owners.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField>
-                  <TextField type="date" label="Deadline" value={taskDueDate} onChange={(event) => setTaskDueDate(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+                  <TextField type="date" label="Deadline" value={taskDueDate} onChange={(event) => setTaskDueDate(event.target.value)} error={submitted && Boolean(taskDueDate && taskDueDate < appointment.date)} helperText={submitted && taskDueDate < appointment.date ? 'De deadline mag niet vóór de afspraak liggen.' : undefined} slotProps={{ inputLabel: { shrink: true } }} />
                 </Box>
               </Stack>
             )}
@@ -184,7 +189,7 @@ export default function AfspraakAfrondenPage() {
           <Divider sx={{ my: 1.7 }} />
           <Typography sx={{ fontSize: 10.5 }}>{createTask ? '✓ Besluit + vervolgtaak' : '✓ Besluit zonder vervolgtaak'}</Typography>
           <Typography sx={{ mt: .6, fontSize: 10.5 }}>✓ Eigenaar: {appointment.owner}</Typography>
-          <Button fullWidth size="large" variant="contained" startIcon={<TaskAltRoundedIcon />} onClick={save} disabled={!canCompleteNow} sx={{ mt: 2 }}>Afronden en vastleggen</Button>
+          <Button fullWidth size="large" variant="contained" startIcon={<TaskAltRoundedIcon />} onClick={save} disabled={!canCompleteNow || saving} sx={{ mt: 2 }}>{saving ? 'Vastleggen…' : 'Afronden en vastleggen'}</Button>
           <Button fullWidth component={RouterLink} to={`/jongeren/${clientCode}`} sx={{ mt: .7 }}>Annuleren</Button>
         </Box>
       </Box>

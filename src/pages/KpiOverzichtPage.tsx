@@ -41,7 +41,8 @@ function KpiOverzichtPage() {
     !item.owner ||
     !item.sharingBasis ||
     !item.sharedDataScope ||
-    (!['Besluit ontvangen', 'Afgerond'].includes(item.status) && (!item.nextAction || !item.dueDate))
+    ((['Wachten op reactie', 'Aanvulling gevraagd', 'Afspraak vastgelegd'].includes(item.status) || Boolean(item.nextAction)) &&
+      (!item.nextAction || !item.dueDate))
   )
   const sourceMismatchCount =
     (reporting.incidentReconciliation.available && !reporting.incidentReconciliation.matches ? 1 : 0) +

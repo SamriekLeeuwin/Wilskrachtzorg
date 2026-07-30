@@ -29,10 +29,13 @@ export default function MeldenPage() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [validationNow] = useState(() => Date.now())
   useUnsavedChangesWarning(Boolean(values.clientCode || values.subject.trim() || values.description.trim() || values.owner || values.immediateAction.trim() || values.notified.trim()))
   const safetyFieldsValid = values.kind !== 'Veiligheidsincident' || Boolean(
     values.occurredDate && values.occurredTime && values.location &&
-    values.immediateAction.trim() && values.notified.trim()
+    values.immediateAction.trim() && values.notified.trim() &&
+    new Date(`${values.occurredDate}T${values.occurredTime}`).getTime() <= validationNow
   )
   const valid = Boolean(allowedKinds.includes(values.kind) && values.clientCode && values.subject.trim() && values.description.trim() && values.owner && safetyFieldsValid)
   const chooseClient = (clientCode: string) => {
@@ -41,7 +44,8 @@ export default function MeldenPage() {
   }
   const save = () => {
     setSubmitted(true)
-    if (!valid) return
+    if (!valid || saving) return
+    setSaving(true)
     const createdAt = new Date().toISOString()
     const report: CareReport = {
       ...values,
@@ -83,6 +87,7 @@ export default function MeldenPage() {
       saveWorkQueue([followUpTask, ...queue])
     }
     setSaved(true)
+    setSaving(false)
     setSubmitted(false)
     setValues({ kind: 'Zorginhoudelijk signaal', clientCode: '', subject: '', description: '', owner: '', urgency: 'Vandaag', occurredDate: new Date().toISOString().slice(0, 10), occurredTime: '', location: '', immediateAction: '', notified: '' })
   }
@@ -95,7 +100,7 @@ export default function MeldenPage() {
       <Alert severity="info">Prototype: invoer wordt alleen lokaal op dit apparaat bewaard. Dit is geen bevestiging van registratie in Zilliz of van een formele escalatie.</Alert>
       {values.kind === 'Veiligheidsincident' && <Alert severity="warning"><strong>Acute situatie?</strong> Waarborg eerst de veiligheid en volg direct de geldende bel- en escalatieprocedure. Registreer daarna de feiten en wie is geïnformeerd.</Alert>}
       {saved && <Alert severity="success" onClose={() => setSaved(false)}>De gegevens zijn als lokaal prototypeconcept opgeslagen met status “Ter beoordeling”. Voor een zorg- of veiligheidsmelding is ook een zichtbare opvolgtaak aangemaakt. Externe registratie en verzending zijn niet uitgevoerd.</Alert>}
-      {submitted && !valid && <Alert severity="warning">Kies een dossier en vul alle verplichte inhouds- en opvolgingsvelden in.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Kies een dossier en vul alle verplichte inhouds- en opvolgingsvelden in. Een incidentmoment mag niet in de toekomst liggen.</Alert>}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5 }}>
         <Stack spacing={2.5}>
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
@@ -136,7 +141,7 @@ export default function MeldenPage() {
           <Typography sx={{ mt: .5, fontSize: 10.7 }}>{values.clientCode || 'Geen dossier gekozen'}</Typography>
           <Typography sx={{ mt: .5, fontSize: 10.7 }}>{values.owner || 'Geen taakverantwoordelijke'} · {values.urgency}</Typography>
           <Divider sx={{ my: 1.6 }} />
-          <Button fullWidth size="large" variant="contained" onClick={save}>Prototypeconcept opslaan</Button>
+          <Button fullWidth size="large" variant="contained" onClick={save} disabled={saving}>{saving ? 'Opslaan…' : 'Prototypeconcept opslaan'}</Button>
           {reports.length > 0 && <><Divider sx={{ my: 1.7 }} /><Typography sx={{ fontSize: 10.5, fontWeight: 750 }}>Recent vastgelegde gegevens</Typography>{reports.slice(0, 3).map((item) => <Box key={item.id} sx={{ mt: 1 }}><Chip size="small" label={item.status} /><Typography sx={{ mt: .3, fontSize: 9.8 }}>{item.clientCode} · {item.subject}</Typography></Box>)}</>}
         </Box>
       </Box>

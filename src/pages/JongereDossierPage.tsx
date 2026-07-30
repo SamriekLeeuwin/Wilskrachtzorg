@@ -222,6 +222,16 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
       setEditError('Vul een reden in voor deze trajectwijziging.')
       return
     }
+    if (!editValues.expectedEndDate || editValues.expectedEndDate < trajectory.startDate) {
+      setEditError('De verwachte einddatum mag niet vóór de startdatum van het traject liggen.')
+      return
+    }
+    const all = loadTrajectories()
+    const latestTrajectory = all.find((item) => item.clientCode === trajectory.clientCode)
+    if (!latestTrajectory || latestTrajectory.lastChangedAt !== trajectory.lastChangedAt) {
+      setEditError('Dit traject is intussen gewijzigd. Vernieuw het dossier en controleer de actuele gegevens voordat u opnieuw opslaat.')
+      return
+    }
     const changedAt = new Date().toISOString()
     const changedFields = [
       dateChanged ? `verwachte einddatum van ${trajectory.expectedEndDate} naar ${editValues.expectedEndDate}` : '',
@@ -249,7 +259,6 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
       ],
     }
     setTrajectory(updated)
-    const all = loadTrajectories()
     saveTrajectories(all.map((item) => item.clientCode === updated.clientCode ? updated : item))
     setEditValues({ expectedEndDate: updated.expectedEndDate, location: updated.location, supervisor: updated.supervisor, changeReason: '' })
     setEditOpen(false)

@@ -30,7 +30,7 @@ const primaryItems: MenuItem[] = [
   { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon />, roles: allRoles },
   { label: 'Openstaande taken', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, roles: careRoles },
   { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, roles: careRoles },
-  { label: 'Beoordelingen & besluiten', to: '/beoordelingen', icon: <FactCheckRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Beoordelingen & besluiten', to: '/beoordelingen', icon: <FactCheckRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager', 'Directie'] },
   { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon />, roles: careRoles },
   { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
   { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },

@@ -33,7 +33,7 @@ function App() {
         <Route path="acties/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
         <Route path="acties/:taskId/bewerken" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
         <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
-        <Route path="beoordelingen" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><BeoordelingenPage /></RoleGate>} />
+        <Route path="beoordelingen" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager', 'Directie']}><BeoordelingenPage /></RoleGate>} />
         <Route path="melden" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><MeldenPage /></RoleGate>} />
         <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
         <Route path="jongeren/nieuw" element={<RoleGate roles={['Zorgmanager']}><NieuweJongerePage /></RoleGate>} />

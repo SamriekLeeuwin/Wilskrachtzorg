@@ -18,18 +18,26 @@ export default function NieuweJongerePage() {
     startDate: '', expectedEndDate: '', location: '', supervisor: '', consentConfirmed: false,
   })
   const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
   useUnsavedChangesWarning(Object.values(values).some(Boolean))
   const validDateOrder = Boolean(values.startDate && values.expectedEndDate && values.expectedEndDate >= values.startDate)
+  const startDateIsNotFuture = Boolean(values.startDate && values.startDate <= new Date().toISOString().slice(0, 10))
   const valid = Boolean(
     values.clientCode.trim() && values.originCity.trim() && values.originMunicipality &&
     values.referrer.trim() && values.intakeReason.trim() && values.startDate &&
-    values.expectedEndDate && validDateOrder && values.location && values.supervisor && values.consentConfirmed
+    values.expectedEndDate && validDateOrder && startDateIsNotFuture && values.location && values.supervisor && values.consentConfirmed
   )
   const duplicate = rows.some((item) => item.clientCode.toLowerCase() === values.clientCode.trim().toLowerCase())
 
   const save = () => {
     setSubmitted(true)
-    if (!valid || duplicate) return
+    if (!valid || duplicate || saving) return
+    setSaving(true)
+    const latestRows = loadTrajectories()
+    if (latestRows.some((item) => item.clientCode.toLowerCase() === values.clientCode.trim().toLowerCase())) {
+      setSaving(false)
+      return
+    }
     const trajectory: Trajectory = {
       id: `T-${String(rows.length + 1).padStart(3, '0')}`,
       clientCode: values.clientCode.trim().toUpperCase(),
@@ -46,7 +54,7 @@ export default function NieuweJongerePage() {
       intakeReason: values.intakeReason.trim(),
       consentConfirmed: true,
     }
-    saveTrajectories([trajectory, ...rows])
+    saveTrajectories([trajectory, ...latestRows])
     navigate(`/jongeren/${trajectory.clientCode}?intake=created`)
   }
 
@@ -57,7 +65,7 @@ export default function NieuweJongerePage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Nieuwe jongere en traject</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>Start één controleerbaar dossier zonder persoonsgegevens te kopiëren die al in het bronsysteem staan.</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">{values.startDate && values.expectedEndDate && !validDateOrder ? 'De verwachte einddatum mag niet vóór de startdatum liggen.' : 'Vul alle verplichte intake- en trajectgegevens in en bevestig de grondslag.'}</Alert>}
+      {submitted && !valid && <Alert severity="warning">{values.startDate && !startDateIsNotFuture ? 'Een toekomstig traject vereist eerst een aparte geplande-instroomstatus; kies hier vandaag of een eerdere startdatum.' : values.startDate && values.expectedEndDate && !validDateOrder ? 'De verwachte einddatum mag niet vóór de startdatum liggen.' : 'Vul alle verplichte intake- en trajectgegevens in en bevestig de grondslag.'}</Alert>}
       {duplicate && <Alert severity="error">Deze cliëntcode bestaat al. Open het bestaande dossier om dubbele registratie te voorkomen.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
@@ -78,7 +86,7 @@ export default function NieuweJongerePage() {
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
             <Typography sx={{ mb: 1.7, fontSize: 13.5, fontWeight: 760 }}>2. Traject en verantwoordelijkheid</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.7 }}>
-              <TextField required type="date" label="Startdatum" value={values.startDate} onChange={(event) => setValues({ ...values, startDate: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+              <TextField required type="date" label="Startdatum" value={values.startDate} onChange={(event) => setValues({ ...values, startDate: event.target.value })} error={submitted && Boolean(values.startDate && !startDateIsNotFuture)} helperText={submitted && values.startDate && !startDateIsNotFuture ? 'Toekomstige instroom hoort in een aparte planningsflow.' : undefined} slotProps={{ inputLabel: { shrink: true } }} />
               <TextField required type="date" label="Verwachte einddatum" value={values.expectedEndDate} onChange={(event) => setValues({ ...values, expectedEndDate: event.target.value })} error={submitted && Boolean(values.startDate && values.expectedEndDate && !validDateOrder)} helperText={submitted && values.startDate && values.expectedEndDate && !validDateOrder ? 'Kies een datum op of na de startdatum.' : undefined} slotProps={{ inputLabel: { shrink: true } }} />
               <TextField select required label="Startlocatie" value={values.location} onChange={(event) => setValues({ ...values, location: event.target.value })}>
                 {['Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
@@ -108,7 +116,7 @@ export default function NieuweJongerePage() {
             <Typography sx={{ fontSize: 10.8 }}>Periode: {values.startDate || '—'} tot {values.expectedEndDate || '—'}</Typography>
           </Stack>
           <Divider sx={{ my: 1.7 }} />
-          <Button fullWidth size="large" variant="contained" startIcon={<PersonAddAltRoundedIcon />} onClick={save}>Dossier en traject starten</Button>
+          <Button fullWidth size="large" variant="contained" startIcon={<PersonAddAltRoundedIcon />} onClick={save} disabled={saving}>{saving ? 'Starten…' : 'Dossier en traject starten'}</Button>
           <Button fullWidth component={RouterLink} to="/jongeren" sx={{ mt: .7 }}>Annuleren</Button>
         </Box>
       </Box>
