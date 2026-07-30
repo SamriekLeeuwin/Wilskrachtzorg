@@ -10,22 +10,23 @@ import GedragAnalysePage from './pages/GedragAnalysePage'
 import JongereDossierPage from './pages/JongereDossierPage'
 import WerkvoorraadPage from './pages/WerkvoorraadPage'
 import SignalenPage from './pages/SignalenPage'
+import RoleGate from './components/auth/RoleGate'
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
-        <Route path="acties" element={<WerkvoorraadPage />} />
-        <Route path="signalen" element={<SignalenPage />} />
-        <Route path="jongeren" element={<JongerenPage />} />
-        <Route path="jongeren/:clientCode" element={<JongereDossierPage />} />
-        <Route path="uitstroom-registratie" element={<UitstroomRegistratiePage />} />
-        <Route path="rapportages" element={<RapportagesPage />} />
-        <Route path="kpi-overzicht" element={<KpiOverzichtPage />} />
-        <Route path="gedrag-analyse" element={<GedragAnalysePage />} />
-        <Route path="demo/gedrag-analyse" element={<GedragAnalysePage />} />
-        <Route path="locaties" element={<LocatiesPage />} />
+        <Route path="acties" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><WerkvoorraadPage /></RoleGate>} />
+        <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
+        <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />
+        <Route path="uitstroom-registratie" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><UitstroomRegistratiePage /></RoleGate>} />
+        <Route path="rapportages" element={<RoleGate roles={['Zorgmanager', 'Directie']}><RapportagesPage /></RoleGate>} />
+        <Route path="kpi-overzicht" element={<RoleGate roles={['Zorgmanager', 'Directie']}><KpiOverzichtPage /></RoleGate>} />
+        <Route path="gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><GedragAnalysePage /></RoleGate>} />
+        <Route path="demo/gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><GedragAnalysePage /></RoleGate>} />
+        <Route path="locaties" element={<RoleGate roles={['Zorgmanager', 'Directie']}><LocatiesPage /></RoleGate>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

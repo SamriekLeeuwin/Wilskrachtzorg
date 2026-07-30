@@ -20,19 +20,20 @@ import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsAct
 import type { ReactNode } from 'react'
 import { useWorkspaceRole, workspaceRoles, type WorkspaceRole } from '../context/RoleContext'
 
-type MenuItem = { label: string; to: string; icon: ReactNode; badge?: number }
+type MenuItem = { label: string; to: string; icon: ReactNode; badge?: number; roles: WorkspaceRole[] }
 const drawerWidth = 248
+const allRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Directie']
 
 const primaryItems: MenuItem[] = [
-  { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon /> },
-  { label: 'Werkvoorraad', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, badge: 5 },
-  { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, badge: 6 },
-  { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon /> },
-  { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon /> },
-  { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon /> },
-  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, badge: 3 },
-  { label: 'Gedrag & opvolging', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, badge: 2 },
-  { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon /> },
+  { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon />, roles: allRoles },
+  { label: 'Mijn werkvoorraad', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, badge: 5, roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, badge: 6, roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon />, roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
+  { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
+  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, badge: 3, roles: ['Zorgmanager'] },
+  { label: 'Gedrag & opvolging', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, badge: 2, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
 ]
 
 const pageMeta: Record<string, { title: string; eyebrow: string }> = {
@@ -79,7 +80,7 @@ function DashboardLayout() {
           WERKRUIMTE
         </Typography>
         <List disablePadding>
-          {primaryItems.map((item) => {
+          {primaryItems.filter((item) => item.roles.includes(role)).map((item) => {
             const active = location.pathname === item.to
             return (
               <ListItemButton
@@ -119,12 +120,14 @@ function DashboardLayout() {
             <Typography sx={{ color: '#8090a4', fontWeight: 800, fontSize: 9.5, letterSpacing: '.12em', lineHeight: 1.2 }}>{meta.eyebrow}</Typography>
             <Typography sx={{ color: '#12243a', fontWeight: 760, fontSize: { xs: 20, md: 23 }, letterSpacing: '-.025em', mt: .25 }}>{meta.title}</Typography>
           </Box>
-          <Tooltip title="2 openstaande signalen">
-            <IconButton component={NavLink} to="/signalen" aria-label="Open automatische signalen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
-              <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
-              <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#dc6b48', border: '1px solid #fff' }} />
-            </IconButton>
-          </Tooltip>
+          {role !== 'Directie' && (
+            <Tooltip title="Openstaande signalen">
+              <IconButton component={NavLink} to="/signalen" aria-label="Open automatische signalen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
+                <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
+                <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#dc6b48', border: '1px solid #fff' }} />
+              </IconButton>
+            </Tooltip>
+          )}
           <FormControl size="small" sx={{ display: { xs: 'none', md: 'flex' }, minWidth: 190, mr: 1.5 }}>
             <Select
               value={role}

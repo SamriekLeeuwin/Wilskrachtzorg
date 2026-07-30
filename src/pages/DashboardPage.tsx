@@ -46,6 +46,14 @@ function DashboardPage() {
   const completeness = dataCompleteness(filtered)
   const dashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.status === 'Open'), [])
   const signals = useMemo(() => deriveSignals(allTrajectories, dashboardActions), [allTrajectories, dashboardActions])
+  const showManagement = role === 'Zorgmanager' || role === 'Directie'
+  const showOperationalWork = role !== 'Directie'
+  const visibleDashboardActions = role === 'Gedragswetenschapper'
+    ? dashboardActions.filter((item) => ['UVO', 'Herstelgesprek'].includes(item.type))
+    : dashboardActions
+  const roleSignals = role === 'Gedragswetenschapper'
+    ? signals.filter((item) => item.type === 'Veiligheid')
+    : signals
 
   const originSummary = useMemo(() => {
     const all = filtered
@@ -69,21 +77,42 @@ function DashboardPage() {
           <Typography sx={{ fontSize: 13.5, fontWeight: 780, color: '#214969' }}>Werkruimte voor {role.toLowerCase()}</Typography>
           <Typography sx={{ mt: .35, maxWidth: 760, fontSize: 11.2, lineHeight: 1.55, color: '#567188' }}>{roleFocus[role]}</Typography>
         </Box>
-        <Button component={RouterLink} to="/signalen" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ whiteSpace: 'nowrap' }}>
-          {signals.filter((item) => item.priority === 'Kritiek').length} kritieke signalen
-        </Button>
+        {role !== 'Directie' && (
+          <Button component={RouterLink} to="/signalen" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ whiteSpace: 'nowrap' }}>
+            {roleSignals.filter((item) => item.priority === 'Kritiek').length} kritieke signalen
+          </Button>
+        )}
       </Stack>
 
-      <InsightFilters value={filters} onChange={setFilters} />
+      {showManagement && <InsightFilters value={filters} onChange={setFilters} />}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        <KpiCard label="Actieve jongeren" value={String(active.length)} context={`${filtered.length} trajecten in de gekozen selectie`} benchmark="capaciteit: 10" icon={<Groups2RoundedIcon />} />
-        <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(completedDurations))} context={`Gemiddeld ${formatMonths(averageDuration)} · ${completed.length} afgesloten`} benchmark="streefwaarde ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone="green" />
-        <KpiCard label="Vervolgplek definitief" value={`${arranged.length}/${active.filter((item) => item.followUpPlace !== 'Niet nodig').length}`} context={`${needsPlacement.length} jongeren nog in zoek- of wachtfase`} benchmark="doel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone="amber" />
-        <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
+        {showManagement ? (
+          <>
+            <KpiCard label="Actieve jongeren" value={String(active.length)} context={`${filtered.length} trajecten in de gekozen selectie`} benchmark="capaciteit: 10" icon={<Groups2RoundedIcon />} />
+            <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(completedDurations))} context={`Gemiddeld ${formatMonths(averageDuration)} · ${completed.length} afgesloten`} benchmark="streefwaarde ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone="green" />
+            <KpiCard label="Vervolgplek definitief" value={`${arranged.length}/${active.filter((item) => item.followUpPlace !== 'Niet nodig').length}`} context={`${needsPlacement.length} jongeren nog in zoek- of wachtfase`} benchmark="doel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone="amber" />
+            <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
+          </>
+        ) : role === 'Begeleider' ? (
+          <>
+            <KpiCard label="Mijn open acties" value={String(visibleDashboardActions.length)} context="Uitvoeren of van een resultaat voorzien" icon={<CheckCircleRoundedIcon />} tone="blue" />
+            <KpiCard label="Vandaag of te laat" value={String(visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length)} context="Heeft als eerste aandacht nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
+            <KpiCard label="Actieve dossiers" value={String(active.length)} context="Democase: dossiers binnen de werkruimte" icon={<Groups2RoundedIcon />} tone="green" />
+            <KpiCard label="Doorstroomsignalen" value={String(roleSignals.filter((item) => item.type === 'Doorstroom').length)} context="Vervolgplek of einddatum vraagt opvolging" icon={<HomeWorkRoundedIcon />} tone="amber" />
+          </>
+        ) : (
+          <>
+            <KpiCard label="Open veiligheidssignalen" value={String(roleSignals.length)} context="Inhoudelijke beoordeling of herstelopvolging nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
+            <KpiCard label="Herstelopvolging open" value={String(roleSignals.filter((item) => item.title.includes('Herstel')).length)} context="Herstelgesprek of vervolgmaatregel ontbreekt" icon={<CheckCircleRoundedIcon />} tone="amber" />
+            <KpiCard label="Zware incidenten" value={String(incidents.filter((item) => item.severity === 'Zwaar' && item.date >= '2026-04-29').length)} context="Laatste 90 dagen in de demodata" icon={<AssignmentLateRoundedIcon />} tone="red" />
+            <KpiCard label="UVO-acties" value={String(visibleDashboardActions.filter((item) => item.type === 'UVO').length)} context="Netwerkoverleg vraagt inhoudelijke voorbereiding" icon={<Groups2RoundedIcon />} tone="blue" />
+          </>
+        )}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 1.45fr) minmax(340px, .75fr)' }, gap: 2 }}>
+      {(showOperationalWork || showManagement) && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: showManagement ? 'minmax(0, 1.45fr) minmax(340px, .75fr)' : '1fr' }, gap: 2 }}>
+        {showOperationalWork && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 2.2 }}>
             <Box>
@@ -94,7 +123,7 @@ function DashboardPage() {
           </Stack>
           <Divider />
           <Box>
-            {dashboardActions.slice(0, 4).map((item, index) => {
+            {visibleDashboardActions.slice(0, 4).map((item, index) => {
               const tone = urgencyTone[item.urgency]
               return (
                 <Stack key={item.id} direction="row" alignItems="center" spacing={1.5} sx={{ px: 2.5, py: 1.65, borderBottom: index < 3 ? '1px solid #eef1f4' : 0 }}>
@@ -120,7 +149,9 @@ function DashboardPage() {
             })}
           </Box>
         </Box>
+        )}
 
+        {showManagement && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.5 }}>
           <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Herkomst & verblijfsduur</Typography>
           <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3, mb: 2.25 }}>Trajecten per verwijzende gemeente</Typography>
@@ -137,9 +168,10 @@ function DashboardPage() {
           </Stack>
           <Button component={RouterLink} to="/rapportages" fullWidth variant="outlined" size="small" endIcon={<ArrowForwardRoundedIcon />} sx={{ mt: 2.5, borderColor: '#d7e1ea', color: '#315d82', fontSize: 11.5 }}>Bekijk volledige analyse</Button>
         </Box>
-      </Box>
+        )}
+      </Box>}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
+      {showManagement && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
         {[
           { label: 'Doorstroom', value: `${arranged.length} plekken definitief`, detail: `${needsPlacement.length} dossiers vragen nog actie`, link: '/uitstroom-registratie' },
           { label: 'Veiligheid', value: `${incidents.filter((item) => item.measure === 'Aantekening' && item.date >= '2026-04-29' && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} actieve aantekeningen`, detail: `${incidents.filter((item) => item.recoveryRequired && !item.recoveryCompleted && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} herstelacties open`, link: '/gedrag-analyse' },
@@ -155,7 +187,7 @@ function DashboardPage() {
             <ArrowForwardRoundedIcon sx={{ color: '#9aabba', fontSize: 18 }} />
           </Stack>
         ))}
-      </Box>
+      </Box>}
     </Stack>
   )
 }
