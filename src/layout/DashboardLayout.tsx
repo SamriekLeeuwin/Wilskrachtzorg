@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Box, Chip, CssBaseline, Drawer, IconButton, List,
+  AppBar, Box, Chip, CssBaseline, Drawer, FormControl, IconButton, List, MenuItem, Select,
   ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from '@mui/material'
@@ -16,7 +16,9 @@ import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
 import RuleRoundedIcon from '@mui/icons-material/RuleRounded'
 import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
+import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
 import type { ReactNode } from 'react'
+import { useWorkspaceRole, workspaceRoles, type WorkspaceRole } from '../context/RoleContext'
 
 type MenuItem = { label: string; to: string; icon: ReactNode; badge?: number }
 const drawerWidth = 248
@@ -24,6 +26,7 @@ const drawerWidth = 248
 const primaryItems: MenuItem[] = [
   { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon /> },
   { label: 'Werkvoorraad', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, badge: 5 },
+  { label: 'Signaalcentrum', to: '/signalen', icon: <NotificationsActiveRoundedIcon />, badge: 6 },
   { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon /> },
   { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon /> },
   { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon /> },
@@ -35,6 +38,7 @@ const primaryItems: MenuItem[] = [
 const pageMeta: Record<string, { title: string; eyebrow: string }> = {
   '/': { title: 'Dashboardoverzicht', eyebrow: 'OVERZICHT' },
   '/acties': { title: 'Werkvoorraad', eyebrow: 'ACTIES & BESLUITEN' },
+  '/signalen': { title: 'Automatische signalen', eyebrow: 'RISICO & OPVOLGING' },
   '/jongeren': { title: 'Jongeren', eyebrow: 'CLIËNTEN' },
   '/rapportages': { title: 'Managementrapportage', eyebrow: 'STUREN & VERANTWOORDEN' },
   '/uitstroom-registratie': { title: 'Uitstroom & vervolgplek', eyebrow: 'DOORSTROOM' },
@@ -52,6 +56,7 @@ function DashboardLayout() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
+  const { role, setRole } = useWorkspaceRole()
   const meta = location.pathname.startsWith('/jongeren/')
     ? { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' }
     : pageMeta[location.pathname] ?? pageMeta['/']
@@ -115,11 +120,21 @@ function DashboardLayout() {
             <Typography sx={{ color: '#12243a', fontWeight: 760, fontSize: { xs: 20, md: 23 }, letterSpacing: '-.025em', mt: .25 }}>{meta.title}</Typography>
           </Box>
           <Tooltip title="2 openstaande signalen">
-            <IconButton component={NavLink} to="/acties" aria-label="Open werkvoorraad en meldingen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
+            <IconButton component={NavLink} to="/signalen" aria-label="Open automatische signalen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
               <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
               <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#dc6b48', border: '1px solid #fff' }} />
             </IconButton>
           </Tooltip>
+          <FormControl size="small" sx={{ display: { xs: 'none', md: 'flex' }, minWidth: 190, mr: 1.5 }}>
+            <Select
+              value={role}
+              onChange={(event) => setRole(event.target.value as WorkspaceRole)}
+              inputProps={{ 'aria-label': 'Bekijk werkruimte als rol' }}
+              sx={{ height: 38, bgcolor: '#fff', fontSize: 11.5 }}
+            >
+              {workspaceRoles.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+            </Select>
+          </FormControl>
           <Chip label="Data t/m 28 jul" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eff5fb', color: '#41617f', fontSize: 11, border: '1px solid #dae6f0' }} />
         </Toolbar>
       </AppBar>

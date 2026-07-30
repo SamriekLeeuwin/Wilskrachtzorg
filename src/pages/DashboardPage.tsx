@@ -14,6 +14,15 @@ import {
   type Filters,
 } from '../data/careInsights'
 import { loadTrajectories, loadWorkQueue } from '../data/demoStore'
+import { deriveSignals } from '../data/signals'
+import { useWorkspaceRole } from '../context/RoleContext'
+
+const roleFocus = {
+  Begeleider: 'Start bij jouw open acties, afspraken en jongeren die vandaag opvolging nodig hebben.',
+  Gedragswetenschapper: 'Start bij kritieke veiligheidssignalen, herstelopvolging en patronen in incidenten.',
+  Zorgmanager: 'Stuur op achterstanden, doorstroom, werkvoorraad en betrouwbaarheid van de brondata.',
+  Directie: 'Volg de belangrijkste uitkomsten, afwijkingen ten opzichte van de norm en de onderliggende oorzaken.',
+}
 
 const urgencyTone = {
   Vandaag: { bg: '#fff5e8', color: '#9a5a17' },
@@ -22,6 +31,7 @@ const urgencyTone = {
 }
 
 function DashboardPage() {
+  const { role } = useWorkspaceRole()
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const allTrajectories = useMemo(() => loadTrajectories(), [])
   const filtered = useMemo(() => filterTrajectories(filters, allTrajectories), [allTrajectories, filters])
@@ -35,6 +45,7 @@ function DashboardPage() {
   const qualityIssues = getDataQualityIssues(filtered)
   const completeness = dataCompleteness(filtered)
   const dashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.status === 'Open'), [])
+  const signals = useMemo(() => deriveSignals(allTrajectories, dashboardActions), [allTrajectories, dashboardActions])
 
   const originSummary = useMemo(() => {
     const all = filtered
@@ -53,13 +64,23 @@ function DashboardPage() {
 
   return (
     <Stack spacing={2.5}>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} gap={1.5} sx={{ p: 2.2, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
+        <Box>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 780, color: '#214969' }}>Werkruimte voor {role.toLowerCase()}</Typography>
+          <Typography sx={{ mt: .35, maxWidth: 760, fontSize: 11.2, lineHeight: 1.55, color: '#567188' }}>{roleFocus[role]}</Typography>
+        </Box>
+        <Button component={RouterLink} to="/signalen" variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ whiteSpace: 'nowrap' }}>
+          {signals.filter((item) => item.priority === 'Kritiek').length} kritieke signalen
+        </Button>
+      </Stack>
+
       <InsightFilters value={filters} onChange={setFilters} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        <KpiCard label="Actieve jongeren" value={String(active.length)} context={`${filtered.length} trajecten in de gekozen selectie`} icon={<Groups2RoundedIcon />} />
-        <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(completedDurations))} context={`Gemiddeld ${formatMonths(averageDuration)} · ${completed.length} afgesloten`} icon={<ScheduleRoundedIcon />} tone="green" />
-        <KpiCard label="Vervolgplek definitief" value={`${arranged.length}/${active.filter((item) => item.followUpPlace !== 'Niet nodig').length}`} context={`${needsPlacement.length} jongeren nog in zoek- of wachtfase`} icon={<HomeWorkRoundedIcon />} tone="amber" />
-        <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
+        <KpiCard label="Actieve jongeren" value={String(active.length)} context={`${filtered.length} trajecten in de gekozen selectie`} benchmark="capaciteit: 10" icon={<Groups2RoundedIcon />} />
+        <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(completedDurations))} context={`Gemiddeld ${formatMonths(averageDuration)} · ${completed.length} afgesloten`} benchmark="streefwaarde ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone="green" />
+        <KpiCard label="Vervolgplek definitief" value={`${arranged.length}/${active.filter((item) => item.followUpPlace !== 'Niet nodig').length}`} context={`${needsPlacement.length} jongeren nog in zoek- of wachtfase`} benchmark="doel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone="amber" />
+        <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 1.45fr) minmax(340px, .75fr)' }, gap: 2 }}>

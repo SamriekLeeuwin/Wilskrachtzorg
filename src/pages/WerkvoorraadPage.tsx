@@ -9,6 +9,7 @@ import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadWorkQueue, saveWorkQueue } from '../data/demoStore'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 type ActionStatus = 'Open' | 'Afgerond'
 type ActionRow = WorkItem & { status: ActionStatus; policyReason: string }
@@ -27,6 +28,7 @@ const urgencyTone = {
 }
 
 function WerkvoorraadPage() {
+  const { role } = useWorkspaceRole()
   const defaultActions = workItems.map((item): ActionRow => ({ ...item, status: 'Open', policyReason: policyReasons[item.type] }))
   const [actions, setActions] = useState<ActionRow[]>(() => loadWorkQueue(defaultActions))
   const [typeFilter, setTypeFilter] = useState('Alle typen')
@@ -34,11 +36,16 @@ function WerkvoorraadPage() {
   const [selected, setSelected] = useState<ActionRow | null>(null)
   const [completionNote, setCompletionNote] = useState('')
 
-  const visible = useMemo(() => actions.filter((item) =>
-    item.status === 'Open' &&
-    (typeFilter === 'Alle typen' || item.type === typeFilter) &&
-    (ownerFilter === 'Alle eigenaren' || item.owner === ownerFilter)
-  ), [actions, ownerFilter, typeFilter])
+  const visible = useMemo(() => actions.filter((item) => {
+    const roleMatches =
+      role === 'Gedragswetenschapper' ? ['UVO', 'Herstelgesprek'].includes(item.type) :
+      role === 'Directie' ? ['Vandaag', 'Te laat'].includes(item.urgency) :
+      true
+    return item.status === 'Open' &&
+      roleMatches &&
+      (typeFilter === 'Alle typen' || item.type === typeFilter) &&
+      (ownerFilter === 'Alle eigenaren' || item.owner === ownerFilter)
+  }), [actions, ownerFilter, role, typeFilter])
 
   const completeAction = () => {
     if (!selected || !completionNote.trim()) return
@@ -56,7 +63,7 @@ function WerkvoorraadPage() {
       <Box sx={{ p: 2.3, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
         <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Eén gezamenlijke werkvoorraad</Typography>
         <Typography sx={{ mt: .4, maxWidth: 850, fontSize: 10.9, lineHeight: 1.55, color: '#567188' }}>
-          Zorgmanager en gedragswetenschapper zien hier alleen acties die een besluit, afspraak of controle vragen. Iedere actie bevat de beleidsaanleiding, eigenaar en deadline.
+          Deze werkvoorraad is afgestemd op de rol {role.toLowerCase()}. Iedere actie bevat de beleidsaanleiding, eigenaar, deadline en een controleerbaar resultaat.
         </Typography>
       </Box>
 
@@ -93,7 +100,7 @@ function WerkvoorraadPage() {
                   </Box>
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
-                    <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} sx={{ fontSize: 10.5 }}>Afronden</Button>
+                    <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={role === 'Directie'} sx={{ fontSize: 10.5 }}>Afronden</Button>
                   </Stack>
                 </Stack>
               </Box>

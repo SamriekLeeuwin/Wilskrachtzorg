@@ -9,6 +9,7 @@ import UitstroomRegistratiePage from './pages/UitstroomRegistratiePage'
 import GedragAnalysePage from './pages/GedragAnalysePage'
 import JongereDossierPage from './pages/JongereDossierPage'
 import WerkvoorraadPage from './pages/WerkvoorraadPage'
+import SignalenPage from './pages/SignalenPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="acties" element={<WerkvoorraadPage />} />
+        <Route path="signalen" element={<SignalenPage />} />
         <Route path="jongeren" element={<JongerenPage />} />
         <Route path="jongeren/:clientCode" element={<JongereDossierPage />} />
         <Route path="uitstroom-registratie" element={<UitstroomRegistratiePage />} />
