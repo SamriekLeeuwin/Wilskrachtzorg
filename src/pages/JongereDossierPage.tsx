@@ -11,7 +11,7 @@ import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import { Link as RouterLink, useParams } from 'react-router-dom'
+import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom'
 import {
   incidents, monthsBetween, trajectories, workItems, type WorkItem,
 } from '../data/careInsights'
@@ -52,6 +52,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 function JongereDossierPage() {
   const { clientCode } = useParams()
+  const [searchParams] = useSearchParams()
   const initialTrajectory = loadTrajectories().find((item) => item.clientCode === clientCode) ?? trajectories[0]
   const [trajectory, setTrajectory] = useState(initialTrajectory)
   const [tab, setTab] = useState(0)
@@ -109,11 +110,11 @@ function JongereDossierPage() {
         <Button component={RouterLink} to="/jongeren" startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start', color: '#5b7185' }}>Terug naar jongeren</Button>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<EditRoundedIcon />} onClick={() => setEditOpen(true)}>Traject wijzigen</Button>
-          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setDialogOpen(true)}>Nieuwe afspraak</Button>
+          <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/nieuw`} variant="contained" startIcon={<AddRoundedIcon />}>Nieuwe afspraak</Button>
         </Stack>
       </Stack>
 
-      {savedMessage && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage}</Alert>}
+      {(savedMessage || searchParams.get('appointment') === 'created') && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage || 'De afspraak, deelnemers en agenda zijn opgeslagen. De gekoppelde taak is bijgewerkt.'}</Alert>}
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.2} sx={{ p: 2.5 }}>
@@ -228,7 +229,7 @@ function JongereDossierPage() {
       {tab === 1 && (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.25fr .75fr' }, gap: 2 }}>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Alle afspraken</Typography><Button size="small" startIcon={<AddRoundedIcon />} onClick={() => setDialogOpen(true)}>Toevoegen</Button></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Alle afspraken</Typography><Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/nieuw`} size="small" startIcon={<AddRoundedIcon />}>Toevoegen</Button></Stack>
             <Stack spacing={1.1} sx={{ mt: 1.8 }}>{appointments.map((appointment) => <Box key={appointment.id} sx={{ p: 1.5, border: '1px solid #e6ebef', borderRadius: 1.8 }}><Stack direction="row" justifyContent="space-between" gap={1}><Box><Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography><Typography sx={{ mt: .3, fontSize: 10.2, color: '#8492a2' }}>{appointment.type} · {appointment.participants}</Typography></Box><Typography sx={{ fontSize: 10.5, fontWeight: 680, color: '#557188', whiteSpace: 'nowrap' }}>{new Date(appointment.date).toLocaleDateString('nl-NL')} · {appointment.time}</Typography></Stack></Box>)}</Stack>
           </Box>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Afspraken vastleggen</Typography><Typography sx={{ mt: 1, fontSize: 11, lineHeight: 1.65, color: '#64788a' }}>Leg onderwerp, deelnemers, eigenaar en tijd vast. Besluiten en vervolgacties horen na het gesprek in het dossier, zodat management en begeleiding dezelfde actuele informatie zien.</Typography></Box>

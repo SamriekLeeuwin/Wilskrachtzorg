@@ -8,6 +8,7 @@ import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadWorkQueue, saveWorkQueue } from '../data/demoStore'
@@ -107,6 +108,7 @@ function WerkvoorraadPage() {
                   </Box>
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
+                    {['UVO', 'Herstelgesprek', 'Evaluatie'].includes(item.type) && <Button component={RouterLink} to={`/jongeren/${item.clientCode}/afspraak/nieuw?type=${item.type}&task=${item.id}`} size="small" variant="outlined" startIcon={<CalendarMonthRoundedIcon />} sx={{ fontSize: 10.5 }}>Inplannen</Button>}
                     <Button component={RouterLink} to={`/acties/${item.id}/bewerken`} size="small" variant="outlined" startIcon={<EditRoundedIcon />} sx={{ fontSize: 10.5 }}>Wijzigen</Button>
                     <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={role === 'Directie'} sx={{ fontSize: 10.5 }}>Afronden</Button>
                   </Stack>

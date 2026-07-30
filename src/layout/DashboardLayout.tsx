@@ -59,7 +59,9 @@ function DashboardLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
   const { role, setRole } = useWorkspaceRole()
-  const meta = location.pathname.startsWith('/jongeren/')
+  const meta = location.pathname.endsWith('/afspraak/nieuw')
+    ? { title: 'Afspraak inplannen', eyebrow: 'DOSSIER & OPVOLGING' }
+    : location.pathname.startsWith('/jongeren/')
     ? { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' }
     : location.pathname.startsWith('/acties/') && location.pathname.endsWith('/bewerken')
       ? { title: 'Taak wijzigen', eyebrow: 'ACTIES & BESLUITEN' }

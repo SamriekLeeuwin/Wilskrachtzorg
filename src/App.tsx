@@ -11,6 +11,7 @@ import JongereDossierPage from './pages/JongereDossierPage'
 import WerkvoorraadPage from './pages/WerkvoorraadPage'
 import SignalenPage from './pages/SignalenPage'
 import NieuweTaakPage from './pages/NieuweTaakPage'
+import NieuweAfspraakPage from './pages/NieuweAfspraakPage'
 import RoleGate from './components/auth/RoleGate'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
         <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
         <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode/afspraak/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweAfspraakPage /></RoleGate>} />
         <Route path="uitstroom-registratie" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><UitstroomRegistratiePage /></RoleGate>} />
         <Route path="rapportages" element={<RoleGate roles={['Zorgmanager', 'Directie']}><RapportagesPage /></RoleGate>} />
         <Route path="kpi-overzicht" element={<RoleGate roles={['Zorgmanager', 'Directie']}><KpiOverzichtPage /></RoleGate>} />
