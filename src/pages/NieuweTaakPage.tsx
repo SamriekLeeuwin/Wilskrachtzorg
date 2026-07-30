@@ -200,7 +200,7 @@ function NieuweTaakPage() {
             <Typography sx={{ mb: 1.8, fontSize: 13.5, fontWeight: 760, color: '#294157' }}>2. Voor wie en waarom?</Typography>
             <Stack spacing={1.8}>
               <TextField select required fullWidth label="Jongere / dossier" value={clientCode} onChange={(event) => selectClient(event.target.value)} error={submitted && !clientCode}>
-                {trajectories.map((item) => <MenuItem key={item.id} value={item.clientCode}>{item.clientCode} · {item.location} · {item.currentPhase}</MenuItem>)}
+                {trajectories.map((item) => <MenuItem key={item.id} value={item.clientCode}>{item.clientCode} · {item.location} · {item.supervisor}</MenuItem>)}
               </TextField>
               <TextField required fullWidth label="Titel van de taak" value={title} onChange={(event) => setTitle(event.target.value)} error={submitted && !title.trim()} />
               <TextField

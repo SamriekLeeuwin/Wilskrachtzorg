@@ -117,7 +117,7 @@ function JongereDossierPage() {
             <InfoField label="Herkomst" value={`${trajectory.originCity}, ${trajectory.originMunicipality}`} />
             <InfoField label="Locatie" value={trajectory.location} />
             <InfoField label="Begeleider" value={trajectory.supervisor} />
-            <InfoField label="Huidige fase" value={trajectory.currentPhase} />
+            <InfoField label="Incidenten (90 dagen)" value={String(trajectory.incidents90d)} />
             <InfoField label="In zorg sinds" value={new Date(trajectory.startDate).toLocaleDateString('nl-NL')} />
             <InfoField label="Verblijfsduur" value={`${currentDuration.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} maanden`} />
           </Box>
@@ -268,11 +268,6 @@ function JongereDossierPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField fullWidth type="date" label="Verwachte einddatum" value={editValues.expectedEndDate} onChange={(event) => setEditValues({ ...editValues, expectedEndDate: event.target.value })} InputLabelProps={{ shrink: true }} />
-            <FormControl fullWidth>
-              <Select value={editValues.currentPhase} onChange={(event) => setEditValues({ ...editValues, currentPhase: event.target.value as typeof editValues.currentPhase })} inputProps={{ 'aria-label': 'Huidige fase' }}>
-                {['Stabilisatie', 'Verantwoordelijkheid', 'Onafhankelijkheid', 'Voorbereiding uitstroom'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
-              </Select>
-            </FormControl>
             <FormControl fullWidth>
               <Select value={editValues.location} onChange={(event) => setEditValues({ ...editValues, location: event.target.value as typeof editValues.location })} inputProps={{ 'aria-label': 'Locatie' }}>
                 {['Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}

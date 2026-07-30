@@ -134,7 +134,7 @@ function JongerenPage() {
           <Table size="small" sx={{ minWidth: 920 }}>
             <TableHead>
               <TableRow>
-                {['Jongere', 'Herkomst', 'Locatie', 'Begeleider', 'Fase', 'Verblijfsduur', 'Vervolgplek', ''].map((header) => <TableCell key={header}>{header}</TableCell>)}
+                {['Jongere', 'Herkomst', 'Locatie', 'Begeleider', 'Incidenten 90 dagen', 'Verblijfsduur', 'Vervolgplek', ''].map((header) => <TableCell key={header}>{header}</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -159,7 +159,7 @@ function JongerenPage() {
                   <TableCell>{row.originCity}<Typography sx={{ fontSize: 9.5, color: '#93a0ac' }}>{row.originMunicipality}</Typography></TableCell>
                   <TableCell>{row.location}</TableCell>
                   <TableCell>{row.supervisor}</TableCell>
-                  <TableCell><Chip label={row.currentPhase} size="small" sx={{ height: 21, bgcolor: '#edf4fa', color: '#3e6f95', fontSize: 9.5 }} /></TableCell>
+                  <TableCell><Chip label={row.incidents90d} size="small" sx={{ height: 21, bgcolor: row.incidents90d > 0 ? '#fff3e7' : '#eaf6f1', color: row.incidents90d > 0 ? '#965b20' : '#28745d', fontSize: 9.5 }} /></TableCell>
                   <TableCell>{monthsBetween(row.startDate, row.endDate ?? '2026-07-28').toLocaleString('nl-NL', { maximumFractionDigits: 1 })} mnd</TableCell>
                   <TableCell><Chip label={row.followUpPlace} size="small" sx={{ height: 21, bgcolor: ['Definitief akkoord', 'Geplaatst'].includes(row.followUpPlace) ? '#eaf6f1' : '#f5f2ed', color: ['Definitief akkoord', 'Geplaatst'].includes(row.followUpPlace) ? '#28745d' : '#7b6955', fontSize: 9.5 }} /></TableCell>
                   <TableCell><ArrowForwardRoundedIcon sx={{ fontSize: 17, color: '#91a1af' }} /></TableCell>
