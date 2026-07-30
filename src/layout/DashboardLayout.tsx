@@ -39,6 +39,7 @@ const primaryItems: MenuItem[] = [
 const pageMeta: Record<string, { title: string; eyebrow: string }> = {
   '/': { title: 'Dashboardoverzicht', eyebrow: 'OVERZICHT' },
   '/acties': { title: 'Werkvoorraad', eyebrow: 'ACTIES & BESLUITEN' },
+  '/acties/nieuw': { title: 'Nieuwe taak', eyebrow: 'ACTIES & BESLUITEN' },
   '/signalen': { title: 'Automatische signalen', eyebrow: 'RISICO & OPVOLGING' },
   '/jongeren': { title: 'Jongeren', eyebrow: 'CLIËNTEN' },
   '/rapportages': { title: 'Managementrapportage', eyebrow: 'STUREN & VERANTWOORDEN' },

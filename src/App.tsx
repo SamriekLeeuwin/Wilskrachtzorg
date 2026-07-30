@@ -10,6 +10,7 @@ import GedragAnalysePage from './pages/GedragAnalysePage'
 import JongereDossierPage from './pages/JongereDossierPage'
 import WerkvoorraadPage from './pages/WerkvoorraadPage'
 import SignalenPage from './pages/SignalenPage'
+import NieuweTaakPage from './pages/NieuweTaakPage'
 import RoleGate from './components/auth/RoleGate'
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="acties" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><WerkvoorraadPage /></RoleGate>} />
+        <Route path="acties/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
         <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
         <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
         <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />

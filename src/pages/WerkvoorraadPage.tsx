@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
+  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
   FormControl, MenuItem, Select, Stack, TextField, Typography,
 } from '@mui/material'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
-import { Link as RouterLink } from 'react-router-dom'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadWorkQueue, saveWorkQueue } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
@@ -29,6 +30,7 @@ const urgencyTone = {
 
 function WerkvoorraadPage() {
   const { role } = useWorkspaceRole()
+  const [searchParams] = useSearchParams()
   const defaultActions = workItems.map((item): ActionRow => ({ ...item, status: 'Open', policyReason: policyReasons[item.type] }))
   const [actions, setActions] = useState<ActionRow[]>(() => loadWorkQueue(defaultActions))
   const [typeFilter, setTypeFilter] = useState('Alle typen')
@@ -60,6 +62,7 @@ function WerkvoorraadPage() {
 
   return (
     <Stack spacing={2.5}>
+      {searchParams.get('created') === '1' && <Alert severity="success">De taak is toegevoegd en staat nu in de werkvoorraad.</Alert>}
       <Box sx={{ p: 2.3, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
         <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Eén gezamenlijke werkvoorraad</Typography>
         <Typography sx={{ mt: .4, maxWidth: 850, fontSize: 10.9, lineHeight: 1.55, color: '#567188' }}>
@@ -74,6 +77,7 @@ function WerkvoorraadPage() {
             <Typography sx={{ mt: .2, fontSize: 10.5, color: '#8492a2' }}>{visible.filter((item) => item.urgency === 'Te laat').length} te laat · {visible.filter((item) => item.urgency === 'Vandaag').length} vandaag</Typography>
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <Button component={RouterLink} to="/acties/nieuw" variant="contained" startIcon={<AddRoundedIcon />}>Nieuwe taak</Button>
             <FormControl size="small" sx={{ minWidth: 155 }}><Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} inputProps={{ 'aria-label': 'Actietype' }}>{['Alle typen', 'UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
             <FormControl size="small" sx={{ minWidth: 160 }}><Select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} inputProps={{ 'aria-label': 'Actiehouder' }}>{['Alle eigenaren', ...Array.from(new Set(actions.map((item) => item.owner)))].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
           </Stack>
