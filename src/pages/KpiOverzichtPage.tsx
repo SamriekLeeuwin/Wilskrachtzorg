@@ -1,249 +1,178 @@
+import { useMemo, useState } from 'react'
 import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Grid,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
+  Alert, Box, Button, Chip, Divider, Stack, Tab, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Tabs, Typography,
 } from '@mui/material'
-import PageHeader from '../components/ui/PageHeader'
-import MetricCard from '../components/ui/MetricCard'
-import SectionCard from '../components/ui/SectionCard'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
+import RuleRoundedIcon from '@mui/icons-material/RuleRounded'
+import { Link as RouterLink } from 'react-router-dom'
+import InsightFilters from '../components/insights/InsightFilters'
+import KpiCard from '../components/insights/KpiCard'
+import {
+  dataCompleteness, filterTrajectories, getDataQualityIssues, type Filters,
+} from '../data/careInsights'
+import { loadTrajectories } from '../data/demoStore'
 
-type InsightCard = {
-  title: string
-  metric: string
-  action: string
-  priority?: 'high' | 'default'
-}
-
-const insightCards: InsightCard[] = [
+const definitions = [
   {
-    title: 'Actie nodig · Stabilisatie',
-    metric: '24 incidenten',
-    action: 'Voer extra checks uit in de dagstart en avondoverdracht.',
-    priority: 'high',
+    name: 'Actieve jongeren',
+    purpose: 'Actuele caseload en bezetting volgen',
+    calculation: 'Unieke trajecten zonder uitstroomdatum op de peildatum',
+    required: 'Cliëntcode, instroomdatum, uitstroomdatum',
+    owner: 'Zorgmanager',
   },
   {
-    title: 'Laagste druk · Uitstroom',
-    metric: '1 incident',
-    action: 'Gebruik deze aanpak als standaard voor vergelijkbare casussen.',
+    name: 'Mediane verblijfsduur',
+    purpose: 'Typische trajectduur volgen zonder vertekening door uitschieters',
+    calculation: 'Mediaan van uitstroomdatum minus instroomdatum, uitsluitend afgesloten trajecten',
+    required: 'Instroomdatum, uitstroomdatum',
+    owner: 'Zorgmanager',
   },
   {
-    title: 'Trend · Fase 3-4',
-    metric: '18% daling',
-    action: 'Borg de daling met wekelijkse teamreview op risicosignalen.',
+    name: 'Boven verwachte einddatum',
+    purpose: 'Dossiers vinden waar doorstroom stagneert',
+    calculation: 'Actief traject waarvan verwachte einddatum vóór de peildatum ligt',
+    required: 'Instroomdatum, verwachte einddatum, uitstroomdatum',
+    owner: 'Zorgmanager',
+  },
+  {
+    name: 'Vervolgplek geregeld',
+    purpose: 'Uitstroomrisico vroeg zichtbaar maken',
+    calculation: 'Definitief akkoord of geplaatst ÷ trajecten waarvoor een vervolgplek nodig is',
+    required: 'Vervolgplek nodig, status, aanbieder en geplande uitstroom',
+    owner: 'Zorgmanager',
+  },
+  {
+    name: 'Actieve aantekeningen',
+    purpose: 'Gedrags- en veiligheidsopvolging bewaken',
+    calculation: 'Niet-vervallen aantekeningen binnen 3 maanden; historische registraties blijven bewaard',
+    required: 'Datum, type, ernst, fase, melder en opvolging',
+    owner: 'Gedragswetenschapper',
+  },
+  {
+    name: 'Datacompleetheid',
+    purpose: 'Aangeven of stuurinformatie betrouwbaar genoeg is',
+    calculation: 'Ingevulde verplichte velden ÷ alle verplichte velden voor de geselecteerde trajecten',
+    required: 'Alle hierboven genoemde bronvelden',
+    owner: 'Zorgmanager',
   },
 ]
-
-const kpiCards = [
-  { label: 'Totaal incidenten', value: '49' },
-  { label: 'Gem. per jongere', value: '1.4' },
-  { label: 'Hoge ernst', value: '7' },
-  { label: 'Actieve fases', value: '4' },
-]
-
-const heatmapColumns = ['Orde', 'Ontwijking', 'Hygiene', 'Agressie']
-
-const heatmapRows = [
-  { phase: 'Stabilisatie', values: [8, 6, 4, 3] },
-  { phase: 'Verantwoordelijkheid', values: [5, 3, 2, 2] },
-  { phase: 'Onafhankelijkheid', values: [2, 1, 1, 1] },
-  { phase: 'Uitstroom', values: [1, 0, 0, 0] },
-]
-
-const maxHeatmapValue = Math.max(...heatmapRows.flatMap((row) => row.values))
-
-const getHeatmapCellStyles = (value: number) => {
-  if (value === 0) {
-    return {
-      bgcolor: '#f8fafc',
-      color: '#94a3b8',
-      opacity: 0.75,
-    }
-  }
-
-  const ratio = value / maxHeatmapValue
-  if (ratio >= 0.75) {
-    return {
-      bgcolor: '#fee2e2',
-      color: '#7f1d1d',
-      border: '2px solid rgba(185, 28, 28, 0.24)',
-      fontWeight: 700,
-    }
-  }
-
-  return {
-    bgcolor: '#eff6ff',
-    color: '#334155',
-  }
-}
 
 function KpiOverzichtPage() {
+  const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
+  const [tab, setTab] = useState(0)
+  const rows = useMemo(() => loadTrajectories(), [])
+  const filtered = useMemo(() => filterTrajectories(filters, rows), [filters, rows])
+  const issues = useMemo(() => getDataQualityIssues(filtered), [filtered])
+  const completeness = dataCompleteness(filtered)
+  const active = filtered.filter((row) => !row.endDate)
+  const overdue = active.filter((row) => new Date(row.expectedEndDate) < new Date('2026-07-28'))
+  const blocking = issues.filter((issue) => issue.severity === 'Blokkerend')
+  const trustworthy = completeness >= 95 && blocking.length === 0
+
   return (
     <Stack spacing={2.5}>
-      <PageHeader
-        title="KPI Overzicht"
-        subtitle="Dagelijks beslisoverzicht voor prioritering van zorgacties."
-      />
-
-      <Grid container spacing={1.5}>
-        {insightCards.map((card) => (
-          <Grid key={card.title} size={{ xs: 12, md: card.priority === 'high' ? 6 : 3 }}>
-            <Card
-              elevation={0}
-              sx={{
-                border: card.priority === 'high' ? '2px solid #b91c1c' : '1px solid #e5e7eb',
-                background: card.priority === 'high'
-                  ? 'linear-gradient(150deg, #fff5f5 0%, #fff 45%)'
-                  : '#fff',
-                minHeight: card.priority === 'high' ? 168 : 148,
-              }}
-            >
-              <CardContent sx={{ p: 2 }}>
-                <Typography
-                  variant="overline"
-                  sx={{
-                    color: card.priority === 'high' ? '#b91c1c' : '#64748b',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  {card.title}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: card.priority === 'high' ? 34 : 28,
-                    fontWeight: 800,
-                    lineHeight: 1,
-                    color: card.priority === 'high' ? '#b91c1c' : '#0f172a',
-                    mt: 0.5,
-                  }}
-                >
-                  {card.metric}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 1.5, color: '#475569' }}>
-                  {card.action}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Box>
-        <Typography
-          variant="overline"
-          sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}
-        >
-          Overzicht cijfers
-        </Typography>
-        <Grid container spacing={1.25} sx={{ mt: 0.25 }}>
-          {kpiCards.map((card) => (
-            <Grid key={card.label} size={{ xs: 6, md: 3 }}>
-              <MetricCard label={card.label} value={card.value} />
-            </Grid>
-          ))}
-        </Grid>
+      <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+        <Box sx={{ px: 2.5, pt: 2.2 }}>
+          <Typography sx={{ fontSize: 15, fontWeight: 780, color: '#172c42' }}>Controleer vóór je cijfers deelt</Typography>
+          <Typography sx={{ mt: .35, fontSize: 11.2, color: '#748598' }}>
+            Eén werkplek voor bronkwaliteit, uitzonderingen en afgesproken KPI-berekeningen.
+          </Typography>
+        </Box>
+        <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ px: 1.5, mt: 1, minHeight: 44, borderTop: '1px solid #eef1f4', '& .MuiTab-root': { minHeight: 44, fontSize: 12, fontWeight: 700, textTransform: 'none' } }}>
+          <Tab label={`Kwaliteitscontrole (${issues.length})`} />
+          <Tab label="KPI-woordenboek" />
+        </Tabs>
       </Box>
 
-      <SectionCard title="Waar concentreert risico zich?" subtitle="Hoogste risico in Stabilisatie fase">
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Fase</TableCell>
-                {heatmapColumns.map((column) => (
-                  <TableCell key={column} align="center">
-                    {column}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {heatmapRows.map((row) => (
-                <TableRow key={row.phase} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.phase}</TableCell>
-                  {row.values.map((value, idx) => (
-                    <TableCell key={`${row.phase}-${heatmapColumns[idx]}`} align="center">
-                      <Box
-                        sx={{
-                          display: 'inline-flex',
-                          minWidth: 38,
-                          height: 30,
-                          borderRadius: 1,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          ...getHeatmapCellStyles(value),
-                        }}
-                      >
-                        {value}
-                      </Box>
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </SectionCard>
+      <InsightFilters value={filters} onChange={setFilters} />
 
-      <Grid container spacing={1.5}>
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Card elevation={0} sx={{ border: '1px solid #e5e7eb' }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700, mb: 1.25 }}>
-                Aanbevolen acties
-              </Typography>
-              <Stack spacing={1}>
-                {[
-                  { phase: 'Stabilisatie', action: 'Voer dagelijks extra checks uit op ordeverzoeken.', priority: 'Hoog' },
-                  { phase: 'Verantwoordelijkheid', action: 'Plan wekelijks coaching op ontwijkgedrag in.', priority: 'Midden' },
-                  { phase: 'Onafhankelijkheid', action: 'Borg succesvolle interventies in teamoverdracht.', priority: 'Laag' },
-                ].map((item) => (
-                  <Box
-                    key={item.phase}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 1,
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 2,
-                      p: 1.25,
-                    }}
-                  >
-                    <Box>
-                      <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{item.phase}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.action}
-                      </Typography>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label={item.priority}
-                      color={item.priority === 'Hoog' ? 'error' : item.priority === 'Midden' ? 'warning' : 'success'}
-                    />
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Alert severity="info" sx={{ border: '1px solid #bfdbfe' }}>
-            Richt vandaag capaciteit op Stabilisatie en monitor agressie en middelengebruik apart voor snellere escalatie.
+      {tab === 0 ? (
+        <>
+          <Alert
+            severity={trustworthy ? 'success' : 'warning'}
+            icon={trustworthy ? <CheckCircleRoundedIcon /> : <ErrorOutlineRoundedIcon />}
+            sx={{ border: `1px solid ${trustworthy ? '#bde4d5' : '#f1d6a9'}`, borderRadius: 2.5 }}
+          >
+            <Typography sx={{ fontWeight: 760, fontSize: 13 }}>
+              {trustworthy ? 'Vrijgegeven voor intern managementgebruik' : 'Nog niet vrijgeven voor externe rapportage'}
+            </Typography>
+            <Typography sx={{ fontSize: 11.5 }}>
+              {trustworthy
+                ? 'De selectie voldoet aan de ingestelde minimale kwaliteitsgrens.'
+                : `${blocking.length} blokkerende controles moeten eerst worden opgelost. Interne verkenning kan wel, met deze waarschuwing zichtbaar.`}
+            </Typography>
           </Alert>
-        </Grid>
-      </Grid>
+
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
+            <KpiCard label="Datacompleetheid" value={`${completeness}%`} context={`Norm voor vrijgave: ≥95% en 0 blokkades`} icon={<FactCheckRoundedIcon />} tone={completeness >= 95 ? 'green' : 'amber'} />
+            <KpiCard label="Blokkerende controles" value={String(blocking.length)} context="Moeten vóór externe rapportage worden opgelost" icon={<ErrorOutlineRoundedIcon />} tone={blocking.length ? 'red' : 'green'} />
+            <KpiCard label="Dossiers gecontroleerd" value={String(filtered.length)} context={`${active.length} actief · ${filtered.length - active.length} afgesloten`} icon={<RuleRoundedIcon />} />
+            <KpiCard label="Te late trajectverwachting" value={String(overdue.length)} context="Actieve dossiers voorbij verwachte einddatum" icon={<ErrorOutlineRoundedIcon />} tone={overdue.length ? 'amber' : 'green'} />
+          </Box>
+
+          <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1} sx={{ px: 2.5, py: 2 }}>
+              <Box>
+                <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Te herstellen registraties</Typography>
+                <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Gesorteerd op blokkade; herstel altijd in het oorspronkelijke jongerendossier</Typography>
+              </Box>
+              <Chip label={`${issues.length} aandachtspunten`} size="small" sx={{ alignSelf: 'flex-start', bgcolor: issues.length ? '#fff3e5' : '#eaf6f1', color: issues.length ? '#925b1d' : '#24745d' }} />
+            </Stack>
+            <Divider />
+            <TableContainer>
+              <Table size="small" sx={{ minWidth: 720 }}>
+                <TableHead><TableRow>{['Dossier', 'Ontbrekend/onjuist veld', 'Effect op rapportage', 'Prioriteit', 'Herstellen'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
+                <TableBody>
+                  {issues.length ? issues.map((issue) => (
+                    <TableRow key={issue.id} hover>
+                      <TableCell sx={{ fontWeight: 700 }}>{issue.clientCode}</TableCell>
+                      <TableCell>{issue.field}</TableCell>
+                      <TableCell>{issue.problem}</TableCell>
+                      <TableCell><Chip label={issue.severity} size="small" sx={{ height: 21, fontSize: 10, bgcolor: issue.severity === 'Blokkerend' ? '#fcecea' : '#fff3e5', color: issue.severity === 'Blokkerend' ? '#a44539' : '#925b1d' }} /></TableCell>
+                      <TableCell><Button component={RouterLink} to={`/jongeren/${issue.clientCode}`} size="small">Open dossier</Button></TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 5, color: '#718196' }}>Geen problemen gevonden in deze selectie.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </>
+      ) : (
+        <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+          <Box sx={{ px: 2.5, py: 2 }}>
+            <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Goedgekeurde KPI-definities</Typography>
+            <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Eén definitie per stuurgetal; wijzigingen horen door de gegevenseigenaar te worden goedgekeurd</Typography>
+          </Box>
+          <Divider />
+          <TableContainer>
+            <Table size="small" sx={{ minWidth: 980 }}>
+              <TableHead><TableRow>{['KPI', 'Beslisdoel', 'Exacte berekening', 'Verplichte bronvelden', 'Gegevenseigenaar'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
+              <TableBody>{definitions.map((item) => (
+                <TableRow key={item.name}>
+                  <TableCell sx={{ fontWeight: 750 }}>{item.name}</TableCell>
+                  <TableCell>{item.purpose}</TableCell>
+                  <TableCell>{item.calculation}</TableCell>
+                  <TableCell>{item.required}</TableCell>
+                  <TableCell><Chip label={item.owner} size="small" sx={{ height: 22, fontSize: 10, bgcolor: '#eef4f9', color: '#426684' }} /></TableCell>
+                </TableRow>
+              ))}</TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
+
+      <Box sx={{ p: 2.25, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 750, color: '#214969' }}>Bronstatus</Typography>
+        <Typography sx={{ mt: .35, fontSize: 11, lineHeight: 1.55, color: '#567188' }}>
+          Fictieve Zilliz-demodata · peildatum 28 juli 2026 · geen automatische synchronisatie.
+          Filters gelden voor alle controles. Deze prototypegegevens zijn bedoeld om de werkwijze te beoordelen, niet voor cliëntbesluiten of externe verantwoording.
+        </Typography>
+      </Box>
     </Stack>
   )
 }

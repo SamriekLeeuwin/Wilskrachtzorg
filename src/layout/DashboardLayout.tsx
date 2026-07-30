@@ -1,241 +1,151 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar,
-  Box,
-  CssBaseline,
-  Divider,
-  Drawer,
-  IconButton,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  ListSubheader,
-  Toolbar,
-  Typography,
-  useMediaQuery,
-  useTheme,
+  AppBar, Avatar, Box, Chip, CssBaseline, Divider, Drawer, IconButton, List,
+  ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography,
+  useMediaQuery, useTheme,
 } from '@mui/material'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
-import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
-import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded'
-import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
-import StackedLineChartRoundedIcon from '@mui/icons-material/StackedLineChartRounded'
-import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded'
-import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded'
-import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded'
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded'
+import RouteRoundedIcon from '@mui/icons-material/RouteRounded'
+import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded'
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded'
+import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
+import RuleRoundedIcon from '@mui/icons-material/RuleRounded'
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded'
 import type { ReactNode } from 'react'
 
-type MenuItem = {
-  label: string
-  to: string
-  section?: string
-  icon: ReactNode
-}
+type MenuItem = { label: string; to: string; icon: ReactNode; badge?: number }
+const drawerWidth = 248
 
-const drawerWidth = 280
-
-const menuItems: MenuItem[] = [
-  { section: 'Hoofdmenu', label: 'Dashboard', to: '/', icon: <DashboardRoundedIcon fontSize="small" /> },
-  { label: 'Jongeren', to: '/jongeren', icon: <PeopleRoundedIcon fontSize="small" /> },
-  { label: 'Uitstroom', to: '/uitstroom-registratie', icon: <TimelineRoundedIcon fontSize="small" /> },
-  { label: 'Rapportages', to: '/rapportages', icon: <AssessmentRoundedIcon fontSize="small" /> },
-  { label: 'Fases & Ontwikkeling', to: '/fase-overzicht', icon: <StackedLineChartRoundedIcon fontSize="small" /> },
-  { label: 'Begeleiders', to: '/begeleiders', icon: <PersonSearchRoundedIcon fontSize="small" /> },
-  { section: 'Aanvullend', label: 'KPI Overzicht', to: '/kpi-overzicht', icon: <AssessmentRoundedIcon fontSize="small" /> },
-  { label: 'Jongere Timeline', to: '/jongere-timeline', icon: <TimelineRoundedIcon fontSize="small" /> },
-  { label: 'Gedrag Analyse', to: '/gedrag-analyse', icon: <StackedLineChartRoundedIcon fontSize="small" /> },
-  { label: 'Locaties', to: '/locaties', icon: <PlaceRoundedIcon fontSize="small" /> },
-  { section: 'Instellingen', label: 'Gebruikersbeheer', to: '/gebruikersbeheer', icon: <ManageAccountsRoundedIcon fontSize="small" /> },
-  { label: 'Systeeminstellingen', to: '/systeeminstellingen', icon: <SettingsRoundedIcon fontSize="small" /> },
+const primaryItems: MenuItem[] = [
+  { label: 'Overzicht', to: '/', icon: <DashboardRoundedIcon /> },
+  { label: 'Werkvoorraad', to: '/acties', icon: <AssignmentTurnedInRoundedIcon />, badge: 5 },
+  { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon /> },
+  { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon /> },
+  { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon /> },
+  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, badge: 3 },
+  { label: 'Gedrag & opvolging', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, badge: 2 },
+  { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon /> },
 ]
 
-const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
-  '/jongeren': 'Jongeren',
-  '/uitstroom-registratie': 'Uitstroom Registratie',
-  '/rapportages': 'Rapportages',
-  '/kpi-overzicht': 'KPI Overzicht',
-  '/fase-overzicht': 'Fase Overzicht',
-  '/jongere-timeline': 'Jongere Timeline',
-  '/gedrag-analyse': 'Gedrag Analyse',
-  '/demo/gedrag-analyse': 'Gedrag Analyse Demo',
-  '/begeleiders': 'Begeleiders',
-  '/locaties': 'Locaties',
-  '/gebruikersbeheer': 'Gebruikersbeheer',
-  '/systeeminstellingen': 'Systeeminstellingen',
+const pageMeta: Record<string, { title: string; eyebrow: string }> = {
+  '/': { title: 'Goedemorgen, Sam', eyebrow: 'OVERZICHT' },
+  '/acties': { title: 'Werkvoorraad', eyebrow: 'ACTIES & BESLUITEN' },
+  '/jongeren': { title: 'Jongeren', eyebrow: 'CLIËNTEN' },
+  '/rapportages': { title: 'Managementrapportage', eyebrow: 'STUREN & VERANTWOORDEN' },
+  '/uitstroom-registratie': { title: 'Uitstroom & vervolgplek', eyebrow: 'DOORSTROOM' },
+  '/gedrag-analyse': { title: 'Gedrag & opvolging', eyebrow: 'VEILIGHEID' },
+  '/fase-overzicht': { title: 'Fases & ontwikkeling', eyebrow: 'TRAJECTEN' },
+  '/jongere-timeline': { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' },
+  '/begeleiders': { title: 'Medewerkers', eyebrow: 'ORGANISATIE' },
+  '/locaties': { title: 'Locaties & capaciteit', eyebrow: 'BEZETTING & ZORGDRUK' },
+  '/kpi-overzicht': { title: 'Databetrouwbaarheid', eyebrow: 'CONTROLE & DEFINITIES' },
+  '/gebruikersbeheer': { title: 'Gebruikersbeheer', eyebrow: 'BEHEER' },
+  '/systeeminstellingen': { title: 'Instellingen', eyebrow: 'BEHEER' },
 }
 
 function DashboardLayout() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
-  const title = pageTitles[location.pathname] ?? 'Dashboard'
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  const groupedMenuItems = useMemo(() => {
-    const groups: Array<{ section: string; items: MenuItem[] }> = []
-    let currentSection = 'Overig'
-
-    menuItems.forEach((item) => {
-      if (item.section) {
-        currentSection = item.section
-      }
-      const existingGroup = groups.find((group) => group.section === currentSection)
-      if (existingGroup) {
-        existingGroup.items.push(item)
-      } else {
-        groups.push({ section: currentSection, items: [item] })
-      }
-    })
-
-    return groups
-  }, [])
+  const meta = location.pathname.startsWith('/jongeren/')
+    ? { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' }
+    : pageMeta[location.pathname] ?? pageMeta['/']
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#07346a', color: '#fff' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 2.5, py: 2.25 }}>
-        <BusinessRoundedIcon fontSize="small" />
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: 0.2 }}>
-          Wilskrachtzorg
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#0b315d', color: '#fff' }}>
+      <Stack direction="row" alignItems="center" spacing={1.2} sx={{ px: 2.5, height: 76 }}>
+        <Box sx={{ width: 34, height: 34, borderRadius: 2, bgcolor: '#fff', color: '#0b315d', display: 'grid', placeItems: 'center' }}>
+          <FavoriteRoundedIcon sx={{ fontSize: 19 }} />
+        </Box>
+        <Box>
+          <Typography sx={{ fontSize: 15, fontWeight: 800, lineHeight: 1.15 }}>Wilskracht Zorg</Typography>
+          <Typography sx={{ fontSize: 10.5, color: 'rgba(255,255,255,.62)', mt: 0.25 }}>Zorginzicht</Typography>
+        </Box>
+      </Stack>
+
+      <Box sx={{ px: 1.25, pt: 2 }}>
+        <Typography sx={{ px: 1.5, mb: 1, color: 'rgba(255,255,255,.48)', fontWeight: 700, fontSize: 10, letterSpacing: '.11em' }}>
+          WERKRUIMTE
         </Typography>
+        <List disablePadding>
+          {primaryItems.map((item) => {
+            const active = location.pathname === item.to
+            return (
+              <ListItemButton
+                key={item.to}
+                component={NavLink}
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                selected={active}
+                sx={{
+                  minHeight: 46, px: 1.5, mb: 0.5, borderRadius: 2,
+                  color: active ? '#fff' : 'rgba(255,255,255,.72)',
+                  '& .MuiListItemIcon-root': { minWidth: 37, color: 'inherit' },
+                  '& .MuiSvgIcon-root': { fontSize: 20 },
+                  '&.Mui-selected': { bgcolor: 'rgba(255,255,255,.12)', boxShadow: 'inset 3px 0 #65b4ff' },
+                  '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,.14)' },
+                  '&:hover': { bgcolor: 'rgba(255,255,255,.08)', color: '#fff' },
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13.5, fontWeight: active ? 700 : 550 }} />
+                {item.badge && <Chip label={item.badge} size="small" sx={{ height: 20, minWidth: 20, bgcolor: '#fef3c7', color: '#92400e', fontSize: 10.5, '& .MuiChip-label': { px: .7 } }} />}
+              </ListItemButton>
+            )
+          })}
+        </List>
       </Box>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)' }} />
 
-      <List sx={{ pt: 1, pb: 2 }}>
-        {groupedMenuItems.map((group) => (
-          <Box key={group.section}>
-            <ListSubheader
-              disableSticky
-              sx={{
-                backgroundColor: 'transparent',
-                color: 'rgba(255,255,255,0.62)',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                lineHeight: 1.8,
-                py: 1,
-              }}
-            >
-              {group.section}
-            </ListSubheader>
-
-            {group.items.map((item) => {
-              const isActive = location.pathname === item.to
-              return (
-                <ListItemButton
-                  key={item.label}
-                  component={NavLink}
-                  to={item.to}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  selected={isActive}
-                  sx={{
-                    mx: 1,
-                    borderRadius: 2,
-                    mb: 0.5,
-                    color: isActive ? '#fff' : 'rgba(255,255,255,0.82)',
-                    '& .MuiListItemIcon-root': {
-                      color: 'inherit',
-                      minWidth: 34,
-                    },
-                    '&.Mui-selected': {
-                      background: 'linear-gradient(90deg, rgba(23,73,133,0.95), rgba(28,88,160,0.88))',
-                    },
-                    '&.Mui-selected:hover': {
-                      background: 'linear-gradient(90deg, rgba(23,73,133,0.95), rgba(28,88,160,0.88))',
-                    },
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.12)',
-                    },
-                  }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
-                  />
-                </ListItemButton>
-              )
-            })}
+      <Box sx={{ mt: 'auto', p: 1.25 }}>
+        <Divider sx={{ borderColor: 'rgba(255,255,255,.1)', mb: 1.25 }} />
+        <Stack direction="row" alignItems="center" spacing={1.2} sx={{ p: 1.5, mt: 1, borderRadius: 2, bgcolor: 'rgba(0,0,0,.12)' }}>
+          <Avatar sx={{ width: 34, height: 34, bgcolor: '#d9eafe', color: '#0b315d', fontSize: 12, fontWeight: 800 }}>SR</Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 700 }}>Sam Riek</Typography>
+            <Typography noWrap sx={{ fontSize: 10.5, color: 'rgba(255,255,255,.55)' }}>Zorgmanager</Typography>
           </Box>
-        ))}
-      </List>
+          <KeyboardArrowDownRoundedIcon sx={{ fontSize: 17, color: 'rgba(255,255,255,.5)' }} />
+        </Stack>
+      </Box>
     </Box>
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: 'radial-gradient(circle at top right, #eef4ff 0%, #f5f7fb 36%)' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f5f7fa' }}>
       <CssBaseline />
-
-      <AppBar
-        position="fixed"
-        color="inherit"
-        elevation={0}
-        sx={{
-          borderBottom: '1px solid #e5e7eb',
-          backgroundColor: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(8px)',
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-        }}
-      >
-        <Toolbar sx={{ minHeight: { xs: 68, md: 80 }, px: { xs: 2, md: 4 } }}>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={() => setIsMobileMenuOpen(true)}
-            sx={{ mr: 1.5, display: { md: 'none' } }}
-            aria-label="Open menu"
-          >
-            <MenuRoundedIcon />
-          </IconButton>
-
-          <Typography variant="h5" sx={{ fontWeight: 700, flex: 1, fontSize: { xs: 22, md: 30 } }}>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manager · Ingelogd
-          </Typography>
+      <AppBar position="fixed" elevation={0} color="inherit" sx={{ width: { md: `calc(100% - ${drawerWidth}px)` }, ml: { md: `${drawerWidth}px` }, bgcolor: 'rgba(255,255,255,.96)', borderBottom: '1px solid #e7ebf0' }}>
+        <Toolbar sx={{ minHeight: { xs: 68, md: 76 }, px: { xs: 2, md: 4 } }}>
+          <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1, display: { md: 'none' } }} aria-label="Open navigatie"><MenuRoundedIcon /></IconButton>
+          <Box sx={{ flex: 1 }}>
+            <Typography sx={{ color: '#8090a4', fontWeight: 800, fontSize: 9.5, letterSpacing: '.12em', lineHeight: 1.2 }}>{meta.eyebrow}</Typography>
+            <Typography sx={{ color: '#12243a', fontWeight: 760, fontSize: { xs: 20, md: 23 }, letterSpacing: '-.025em', mt: .25 }}>{meta.title}</Typography>
+          </Box>
+          <Tooltip title="2 openstaande signalen">
+            <IconButton component={NavLink} to="/acties" aria-label="Open werkvoorraad en meldingen" sx={{ border: '1px solid #e5eaf0', width: 38, height: 38, mr: 1.5 }}>
+              <NotificationsNoneRoundedIcon sx={{ fontSize: 20 }} />
+              <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#dc6b48', border: '1px solid #fff' }} />
+            </IconButton>
+          </Tooltip>
+          <Chip label="Data t/m 28 jul" size="small" sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eff5fb', color: '#41617f', fontSize: 11, border: '1px solid #dae6f0' }} />
         </Toolbar>
       </AppBar>
 
       <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
-        <Drawer
-          variant="temporary"
-          open={isMobile && isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRight: 'none' },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
-
-        <Drawer
-          variant="permanent"
-          open
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRight: 'none' },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
+        <Drawer variant="temporary" open={isMobile && mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, border: 0 } }}>{drawerContent}</Drawer>
+        <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, border: 0 } }} open>{drawerContent}</Drawer>
       </Box>
 
-      <Box component="main" sx={{ flexGrow: 1, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
-        <Toolbar sx={{ minHeight: { xs: 68, md: 80 } }} />
-        <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 3, md: 5 } }}>
-          <Box sx={{ width: 'min(1360px, 100%)', mx: 'auto' }}>
-            <Outlet />
-          </Box>
+      <Box component="main" id="main-content" sx={{ flexGrow: 1, minWidth: 0, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
+        <Toolbar sx={{ minHeight: { xs: 68, md: 76 } }} />
+        <Box sx={{ px: { xs: 2, sm: 3, xl: 4 }, py: { xs: 2.5, md: 3.5 } }}>
+          <Box sx={{ maxWidth: 1420, mx: 'auto' }}><Outlet /></Box>
         </Box>
       </Box>
     </Box>
