@@ -8,11 +8,7 @@ import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadAppointments, loadTrajectories, loadWorkQueue, saveAppointments, saveWorkQueue } from '../data/demoStore'
-
-type Appointment = {
-  id: string; date: string; time: string; endTime?: string; type: string; subject: string
-  participants: string; owner: string; purpose?: string; agenda?: string[]; relatedTaskId?: string
-}
+import { defaultAppointments, type CareAppointment } from '../data/appointments'
 
 const templates: Record<string, { subject: string; purpose: string; participants: string[]; agenda: string[] }> = {
   UVO: {
@@ -82,10 +78,10 @@ export default function NieuweAfspraakPage() {
   const save = () => {
     setSubmitted(true)
     if (!valid || !trajectory) return
-    const existing = loadAppointments<Appointment>(clientCode, [])
-    const appointment: Appointment = {
+    const existing = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
+    const appointment: CareAppointment = {
       id: `AP-${Date.now()}`, date, time, endTime, type, subject: subject.trim(), purpose: purpose.trim(),
-      participants: participants.join(', '), agenda, owner, relatedTaskId: linkedTask?.id,
+      participants: participants.join(', '), agenda, owner, relatedTaskId: linkedTask?.id, status: 'Gepland',
     }
     saveAppointments(clientCode, [...existing, appointment].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)))
     if (linkedTask && closeTask) {

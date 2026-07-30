@@ -98,7 +98,7 @@ function JongerenPage() {
           <Typography sx={{ fontSize: 13.5, fontWeight: 720, color: '#314b61' }}>{filtered.length} trajecten zichtbaar</Typography>
           <Typography sx={{ mt: .2, fontSize: 10.8, color: '#8492a2' }}>Open een jongere voor afspraken, ontwikkeling, incidenten en vervolgplek.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setDialogOpen(true)}>Nieuwe jongere</Button>
+        <Button component={RouterLink} to="/jongeren/nieuw" variant="contained" startIcon={<AddRoundedIcon />}>Nieuwe jongere</Button>
       </Stack>
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>

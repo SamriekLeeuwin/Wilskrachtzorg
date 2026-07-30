@@ -16,22 +16,7 @@ import {
   incidents, monthsBetween, trajectories, workItems, type WorkItem,
 } from '../data/careInsights'
 import { loadAppointments, loadPlacementConversations, loadTrajectories, loadWorkQueue, saveAppointments, saveTrajectories } from '../data/demoStore'
-
-type Appointment = {
-  id: string
-  date: string
-  time: string
-  type: string
-  subject: string
-  participants: string
-  owner: string
-}
-
-const initialAppointments: Appointment[] = [
-  { id: 'AP-1', date: '2026-07-30', time: '10:00', type: 'Mentorgesprek', subject: 'Voortgang doelen en weekplanning', participants: 'Jongere, mentor', owner: 'N. Janssen' },
-  { id: 'AP-2', date: '2026-08-04', time: '14:30', type: 'Netwerkoverleg', subject: 'Vervolgplek en warme overdracht', participants: 'Jongere, mentor, gemeente, aanbieder', owner: 'N. Janssen' },
-  { id: 'AP-3', date: '2026-08-11', time: '09:30', type: 'Evaluatie', subject: 'Eindevaluatie traject', participants: 'Jongere, mentor, gedragswetenschapper', owner: 'N. Janssen' },
-]
+import { defaultAppointments, type CareAppointment } from '../data/appointments'
 
 const dossierHistory = [
   { date: '24 jul 2026', type: 'Vervolgplek', title: 'Definitief plaatsingsbesluit', detail: 'Kompas Wonen heeft plaatsing per 18 augustus bevestigd.', tone: '#2d7a62' },
@@ -56,7 +41,7 @@ function JongereDossierPage() {
   const initialTrajectory = loadTrajectories().find((item) => item.clientCode === clientCode) ?? trajectories[0]
   const [trajectory, setTrajectory] = useState(initialTrajectory)
   const [tab, setTab] = useState(0)
-  const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointments(initialTrajectory.clientCode, initialAppointments))
+  const [appointments, setAppointments] = useState<CareAppointment[]>(() => loadAppointments(initialTrajectory.clientCode, defaultAppointments(initialTrajectory.clientCode)))
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editError, setEditError] = useState('')
@@ -66,6 +51,8 @@ function JongereDossierPage() {
   const relatedActions = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.clientCode === trajectory.clientCode)
   const openActions = relatedActions.filter((item) => item.status !== 'Afgerond')
   const completedActions = relatedActions.filter((item) => item.status === 'Afgerond')
+  const plannedAppointments = appointments.filter((item) => item.status !== 'Afgerond')
+  const completedAppointments = appointments.filter((item) => item.status === 'Afgerond')
   const conversation = loadPlacementConversations().find((item) => item.clientCode === trajectory.clientCode)
   const currentDuration = monthsBetween(trajectory.startDate, trajectory.endDate ?? '2026-07-28')
   const overExpected = !trajectory.endDate && new Date(trajectory.expectedEndDate) < new Date('2026-07-28')
@@ -114,7 +101,7 @@ function JongereDossierPage() {
         </Stack>
       </Stack>
 
-      {(savedMessage || searchParams.get('appointment') === 'created') && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage || 'De afspraak, deelnemers en agenda zijn opgeslagen. De gekoppelde taak is bijgewerkt.'}</Alert>}
+      {(savedMessage || searchParams.get('appointment') === 'created' || searchParams.get('meeting') === 'completed' || searchParams.get('intake') === 'created' || searchParams.get('placement') === 'updated') && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage || (searchParams.get('placement') === 'updated' ? 'De vervolgplekstatus, het besluit en de vervolgtaak zijn samen bijgewerkt.' : searchParams.get('intake') === 'created' ? 'Het dossier en traject zijn gestart. Controleer nu de eerste afspraken en acties.' : searchParams.get('meeting') === 'completed' ? 'Het gesprek, besluit en eventuele vervolgtaak zijn vastgelegd in het dossier.' : 'De afspraak, deelnemers en agenda zijn opgeslagen. De gekoppelde taak is bijgewerkt.')}</Alert>}
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.2} sx={{ p: 2.5 }}>
@@ -156,7 +143,7 @@ function JongereDossierPage() {
                 <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Eerstvolgende afspraken</Typography>
               </Stack>
               <Stack spacing={1.1} sx={{ mt: 1.8 }}>
-                {appointments.slice(0, 3).map((appointment) => (
+                {plannedAppointments.slice(0, 3).map((appointment) => (
                   <Stack key={appointment.id} direction="row" spacing={1.3} sx={{ p: 1.35, bgcolor: '#f8fafb', borderRadius: 1.8 }}>
                     <Box sx={{ width: 50, textAlign: 'center', py: .3 }}>
                       <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: '#6e8496', textTransform: 'uppercase' }}>{new Date(appointment.date).toLocaleDateString('nl-NL', { month: 'short' })}</Typography>
@@ -167,8 +154,10 @@ function JongereDossierPage() {
                       <Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography>
                       <Typography sx={{ mt: .25, fontSize: 10.2, color: '#8492a2' }}>{appointment.time} · {appointment.type} · {appointment.participants}</Typography>
                     </Box>
+                    <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/afronden`} size="small">Afronden</Button>
                   </Stack>
                 ))}
+                {!plannedAppointments.length && <Typography sx={{ fontSize: 10.8, color: '#718496' }}>Geen geplande afspraken.</Typography>}
               </Stack>
             </Box>
 
@@ -208,6 +197,7 @@ function JongereDossierPage() {
                 <InfoField label="Laatste besluit" value={conversation?.decision ?? 'Nog geen besluit vastgelegd'} />
               </Box>
               <Button component={RouterLink} to={`/uitstroom-registratie?client=${trajectory.clientCode}`} fullWidth variant="outlined" size="small" sx={{ mt: 2 }}>Open vervolgplekmonitor</Button>
+              <Button component={RouterLink} to={`/uitstroom-registratie/bijwerken?client=${trajectory.clientCode}`} fullWidth variant="contained" size="small" sx={{ mt: 1 }}>Status en besluit bijwerken</Button>
             </Box>
 
             <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
@@ -230,7 +220,7 @@ function JongereDossierPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.25fr .75fr' }, gap: 2 }}>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Alle afspraken</Typography><Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/nieuw`} size="small" startIcon={<AddRoundedIcon />}>Toevoegen</Button></Stack>
-            <Stack spacing={1.1} sx={{ mt: 1.8 }}>{appointments.map((appointment) => <Box key={appointment.id} sx={{ p: 1.5, border: '1px solid #e6ebef', borderRadius: 1.8 }}><Stack direction="row" justifyContent="space-between" gap={1}><Box><Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography><Typography sx={{ mt: .3, fontSize: 10.2, color: '#8492a2' }}>{appointment.type} · {appointment.participants}</Typography></Box><Typography sx={{ fontSize: 10.5, fontWeight: 680, color: '#557188', whiteSpace: 'nowrap' }}>{new Date(appointment.date).toLocaleDateString('nl-NL')} · {appointment.time}</Typography></Stack></Box>)}</Stack>
+            <Stack spacing={1.1} sx={{ mt: 1.8 }}>{appointments.map((appointment) => <Box key={appointment.id} sx={{ p: 1.5, border: '1px solid #e6ebef', borderRadius: 1.8 }}><Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1}><Box><Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography><Typography sx={{ mt: .3, fontSize: 10.2, color: '#8492a2' }}>{appointment.type} · {appointment.participants}</Typography>{appointment.status === 'Afgerond' && <Typography sx={{ mt: .5, fontSize: 10.2, color: '#4d806d' }}>Afgerond · {appointment.decision}</Typography>}</Box><Stack alignItems={{ sm: 'flex-end' }} spacing={.5}><Typography sx={{ fontSize: 10.5, fontWeight: 680, color: '#557188', whiteSpace: 'nowrap' }}>{new Date(appointment.date).toLocaleDateString('nl-NL')} · {appointment.time}</Typography>{appointment.status !== 'Afgerond' && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/afronden`} size="small">Gesprek afronden</Button>}</Stack></Stack></Box>)}</Stack>
           </Box>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Afspraken vastleggen</Typography><Typography sx={{ mt: 1, fontSize: 11, lineHeight: 1.65, color: '#64788a' }}>Leg onderwerp, deelnemers, eigenaar en tijd vast. Besluiten en vervolgacties horen na het gesprek in het dossier, zodat management en begeleiding dezelfde actuele informatie zien.</Typography></Box>
         </Box>
@@ -256,6 +246,12 @@ function JongereDossierPage() {
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
           <Stack direction="row" alignItems="center" spacing={1}><HistoryRoundedIcon sx={{ fontSize: 19, color: '#4f7899' }} /><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Dossierhistorie</Typography></Stack>
           <Stack sx={{ mt: 2 }}>
+            {completedAppointments.map((event) => (
+              <Stack key={event.id} direction="row" spacing={1.5}>
+                <Stack alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#3f7fa9', mt: .55 }} /><Box sx={{ width: 1, flex: 1, minHeight: 70, bgcolor: '#dfe5ea' }} /></Stack>
+                <Box sx={{ pb: 2 }}><Typography sx={{ fontSize: 9.8, color: '#8b99a6' }}>{new Date(`${event.date}T12:00:00`).toLocaleDateString('nl-NL')} · {event.type}</Typography><Typography sx={{ mt: .25, fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{event.subject}</Typography><Typography sx={{ mt: .25, fontSize: 10.5, color: '#718394' }}>{event.summary}</Typography><Typography sx={{ mt: .35, fontSize: 10.5, fontWeight: 700, color: '#4d6f88' }}>Besluit: {event.decision}</Typography></Box>
+              </Stack>
+            ))}
             {completedActions.map((event) => (
               <Stack key={event.id} direction="row" spacing={1.5}>
                 <Stack alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#4d9378', mt: .55 }} /><Box sx={{ width: 1, flex: 1, minHeight: 54, bgcolor: '#dfe5ea' }} /></Stack>

@@ -12,6 +12,9 @@ import WerkvoorraadPage from './pages/WerkvoorraadPage'
 import SignalenPage from './pages/SignalenPage'
 import NieuweTaakPage from './pages/NieuweTaakPage'
 import NieuweAfspraakPage from './pages/NieuweAfspraakPage'
+import AfspraakAfrondenPage from './pages/AfspraakAfrondenPage'
+import NieuweJongerePage from './pages/NieuweJongerePage'
+import VervolgplekBijwerkenPage from './pages/VervolgplekBijwerkenPage'
 import RoleGate from './components/auth/RoleGate'
 
 function App() {
@@ -24,9 +27,12 @@ function App() {
         <Route path="acties/:taskId/bewerken" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
         <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
         <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
+        <Route path="jongeren/nieuw" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><NieuweJongerePage /></RoleGate>} />
         <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />
         <Route path="jongeren/:clientCode/afspraak/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweAfspraakPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode/afspraak/:appointmentId/afronden" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><AfspraakAfrondenPage /></RoleGate>} />
         <Route path="uitstroom-registratie" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><UitstroomRegistratiePage /></RoleGate>} />
+        <Route path="uitstroom-registratie/bijwerken" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><VervolgplekBijwerkenPage /></RoleGate>} />
         <Route path="rapportages" element={<RoleGate roles={['Zorgmanager', 'Directie']}><RapportagesPage /></RoleGate>} />
         <Route path="kpi-overzicht" element={<RoleGate roles={['Zorgmanager', 'Directie']}><KpiOverzichtPage /></RoleGate>} />
         <Route path="gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><GedragAnalysePage /></RoleGate>} />

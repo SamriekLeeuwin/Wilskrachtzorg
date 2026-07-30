@@ -28,6 +28,9 @@ export type Trajectory = {
   followUpProvider?: string
   plannedOutflow?: string
   outcome?: 'Gepland' | 'Ongepland'
+  referrer?: string
+  intakeReason?: string
+  consentConfirmed?: boolean
 }
 
 export type WorkItem = {

@@ -10,7 +10,7 @@ import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import KpiCard from '../components/insights/KpiCard'
 import { type PlacementConversation } from '../data/careInsights'
 import { loadPlacementConversations, loadTrajectories, savePlacementConversations } from '../data/demoStore'
@@ -82,7 +82,7 @@ function UitstroomRegistratiePage() {
                 {['Alle statussen', 'Nog niet gestart', 'Zoeken', 'Wachtlijst', 'Definitief akkoord'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </Select>
             </FormControl>
-            <Button variant="contained" size="small" startIcon={<AddRoundedIcon />} onClick={() => setDialogOpen(true)} sx={{ fontSize: 11.5 }}>Nieuw gesprek</Button>
+            <Button component={RouterLink} to={`/uitstroom-registratie/bijwerken${clientFilter ? `?client=${clientFilter}` : ''}`} variant="contained" size="small" startIcon={<AddRoundedIcon />} sx={{ fontSize: 11.5 }}>Status en besluit bijwerken</Button>
           </Stack>
         </Stack>
         <Divider />
