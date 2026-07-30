@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Avatar, Box, Chip, CssBaseline, Divider, Drawer, IconButton, List,
+  AppBar, Box, Chip, CssBaseline, Drawer, IconButton, List,
   ListItemButton, ListItemIcon, ListItemText, Stack, Toolbar, Tooltip, Typography,
   useMediaQuery, useTheme,
 } from '@mui/material'
@@ -12,7 +12,6 @@ import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded'
-import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
 import RuleRoundedIcon from '@mui/icons-material/RuleRounded'
@@ -34,7 +33,7 @@ const primaryItems: MenuItem[] = [
 ]
 
 const pageMeta: Record<string, { title: string; eyebrow: string }> = {
-  '/': { title: 'Goedemorgen, Sam', eyebrow: 'OVERZICHT' },
+  '/': { title: 'Dashboardoverzicht', eyebrow: 'OVERZICHT' },
   '/acties': { title: 'Werkvoorraad', eyebrow: 'ACTIES & BESLUITEN' },
   '/jongeren': { title: 'Jongeren', eyebrow: 'CLIËNTEN' },
   '/rapportages': { title: 'Managementrapportage', eyebrow: 'STUREN & VERANTWOORDEN' },
@@ -101,18 +100,6 @@ function DashboardLayout() {
             )
           })}
         </List>
-      </Box>
-
-      <Box sx={{ mt: 'auto', p: 1.25 }}>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,.1)', mb: 1.25 }} />
-        <Stack direction="row" alignItems="center" spacing={1.2} sx={{ p: 1.5, mt: 1, borderRadius: 2, bgcolor: 'rgba(0,0,0,.12)' }}>
-          <Avatar sx={{ width: 34, height: 34, bgcolor: '#d9eafe', color: '#0b315d', fontSize: 12, fontWeight: 800 }}>SR</Avatar>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 700 }}>Sam Riek</Typography>
-            <Typography noWrap sx={{ fontSize: 10.5, color: 'rgba(255,255,255,.55)' }}>Zorgmanager</Typography>
-          </Box>
-          <KeyboardArrowDownRoundedIcon sx={{ fontSize: 17, color: 'rgba(255,255,255,.5)' }} />
-        </Stack>
       </Box>
     </Box>
   )
