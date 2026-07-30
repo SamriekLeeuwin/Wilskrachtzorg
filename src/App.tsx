@@ -24,24 +24,24 @@ function App() {
     <Routes>
       <Route path="/" element={<DashboardLayout />}>
         <Route index element={<DashboardPage />} />
-        <Route path="acties" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><WerkvoorraadPage /></RoleGate>} />
-        <Route path="acties/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
-        <Route path="acties/:taskId/bewerken" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
-        <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
-        <Route path="melden" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><MeldenPage /></RoleGate>} />
-        <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
-        <Route path="jongeren/nieuw" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><NieuweJongerePage /></RoleGate>} />
-        <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />
-        <Route path="jongeren/:clientCode/afspraak/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweAfspraakPage /></RoleGate>} />
-        <Route path="jongeren/:clientCode/afspraak/:appointmentId/afronden" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><AfspraakAfrondenPage /></RoleGate>} />
-        <Route path="jongeren/:clientCode/afspraak/:appointmentId/uitnodigingen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><UitnodigingenBeherenPage /></RoleGate>} />
-        <Route path="uitstroom-registratie" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><UitstroomRegistratiePage /></RoleGate>} />
-        <Route path="uitstroom-registratie/bijwerken" element={<RoleGate roles={['Begeleider', 'Zorgmanager']}><VervolgplekBijwerkenPage /></RoleGate>} />
-        <Route path="rapportages" element={<RoleGate roles={['Zorgmanager', 'Directie']}><RapportagesPage /></RoleGate>} />
-        <Route path="kpi-overzicht" element={<RoleGate roles={['Zorgmanager', 'Directie']}><KpiOverzichtPage /></RoleGate>} />
-        <Route path="gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><GedragAnalysePage /></RoleGate>} />
-        <Route path="demo/gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Zorgmanager']}><GedragAnalysePage /></RoleGate>} />
-        <Route path="locaties" element={<RoleGate roles={['Zorgmanager', 'Directie']}><LocatiesPage /></RoleGate>} />
+        <Route path="acties" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><WerkvoorraadPage /></RoleGate>} />
+        <Route path="acties/nieuw" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><NieuweTaakPage /></RoleGate>} />
+        <Route path="acties/:taskId/bewerken" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><NieuweTaakPage /></RoleGate>} />
+        <Route path="signalen" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><SignalenPage /></RoleGate>} />
+        <Route path="melden" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><MeldenPage /></RoleGate>} />
+        <Route path="jongeren" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Administratie']}><JongerenPage /></RoleGate>} />
+        <Route path="jongeren/nieuw" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie']}><NieuweJongerePage /></RoleGate>} />
+        <Route path="jongeren/:clientCode" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Administratie']}><JongereDossierPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode/afspraak/nieuw" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><NieuweAfspraakPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode/afspraak/:appointmentId/afronden" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><AfspraakAfrondenPage /></RoleGate>} />
+        <Route path="jongeren/:clientCode/afspraak/:appointmentId/uitnodigingen" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider']}><UitnodigingenBeherenPage /></RoleGate>} />
+        <Route path="uitstroom-registratie" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie']}><UitstroomRegistratiePage /></RoleGate>} />
+        <Route path="uitstroom-registratie/bijwerken" element={<RoleGate roles={['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie']}><VervolgplekBijwerkenPage /></RoleGate>} />
+        <Route path="rapportages" element={<RoleGate roles={['Locatieleider', 'Management', 'Directie']}><RapportagesPage /></RoleGate>} />
+        <Route path="kpi-overzicht" element={<RoleGate roles={['Locatieleider', 'Management', 'Administratie', 'Directie']}><KpiOverzichtPage /></RoleGate>} />
+        <Route path="gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Locatieleider']}><GedragAnalysePage /></RoleGate>} />
+        <Route path="demo/gedrag-analyse" element={<RoleGate roles={['Gedragswetenschapper', 'Locatieleider']}><GedragAnalysePage /></RoleGate>} />
+        <Route path="locaties" element={<RoleGate roles={['Locatieleider', 'Management', 'Directie']}><LocatiesPage /></RoleGate>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,6 +1,15 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 
-export type WorkspaceRole = 'Begeleider' | 'Gedragswetenschapper' | 'Zorgmanager' | 'Directie'
+export type WorkspaceRole =
+  | 'Woonbegeleider'
+  | 'Ambulant begeleider'
+  | 'Gedragswetenschapper'
+  | 'Locatieleider'
+  | 'Management'
+  | 'Administratie'
+  | 'Directie'
+  | 'Begeleider'
+  | 'Zorgmanager'
 
 const ROLE_KEY = 'wkz-demo-workspace-role-v1'
 
@@ -9,12 +18,14 @@ const RoleContext = createContext<{
   setRole: (role: WorkspaceRole) => void
 } | null>(null)
 
-export const workspaceRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Directie']
+export const workspaceRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Management', 'Administratie', 'Directie']
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<WorkspaceRole>(() => {
     const stored = window.localStorage.getItem(ROLE_KEY)
-    return workspaceRoles.includes(stored as WorkspaceRole) ? stored as WorkspaceRole : 'Zorgmanager'
+    if (stored === 'Begeleider') return 'Woonbegeleider'
+    if (stored === 'Zorgmanager') return 'Locatieleider'
+    return workspaceRoles.includes(stored as WorkspaceRole) ? stored as WorkspaceRole : 'Locatieleider'
   })
 
   const value = useMemo(() => ({

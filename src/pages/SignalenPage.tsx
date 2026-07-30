@@ -18,9 +18,9 @@ const priorityTone = {
 }
 
 function roleAllows(signal: CareSignal, role: string) {
-  if (role === 'Directie') return signal.priority !== 'Normaal'
+  if (role === 'Directie' || role === 'Management') return signal.priority !== 'Normaal'
   if (role === 'Gedragswetenschapper') return signal.type === 'Veiligheid' || signal.priority === 'Kritiek'
-  if (role === 'Begeleider') return signal.owner !== 'Nog toe te wijzen'
+  if (['Begeleider', 'Woonbegeleider', 'Ambulant begeleider'].includes(role)) return signal.owner !== 'Nog toe te wijzen'
   return true
 }
 

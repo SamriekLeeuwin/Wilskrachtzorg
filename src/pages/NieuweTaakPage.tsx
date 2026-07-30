@@ -42,7 +42,7 @@ const templates: TaskTemplate[] = [
     policyReason: 'Pedagogisch beleid: bij 3 aantekeningen binnen circa 2–3 weken wordt het netwerk uitgenodigd voor een UVO.',
     expectedResult: 'Het UVO staat gepland, betrokkenen zijn uitgenodigd en het doel van het overleg is vastgelegd.',
     checklist: ['Datum afstemmen', 'Netwerk uitnodigen', 'Aanleiding samenvatten', 'Agendapunten toevoegen'],
-    roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Locatieleider'],
   },
   {
     type: 'Herstelgesprek',
@@ -52,7 +52,7 @@ const templates: TaskTemplate[] = [
     policyReason: 'Pedagogisch beleid: een herstelgesprek is verplicht na een zwaar incident, time-out of officiële waarschuwing.',
     expectedResult: 'Het gesprek is gevoerd, afspraken zijn vastgelegd en betrokkenen weten wat de vervolgstap is.',
     checklist: ['Jongere uitnodigen', 'Betrokken medewerker uitnodigen', 'Afspraken vastleggen', 'Vervolg controleren'],
-    roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Zorgmanager', 'Locatieleider'],
   },
   {
     type: 'Vervolgplek',
@@ -62,7 +62,7 @@ const templates: TaskTemplate[] = [
     policyReason: 'Doorstroom: besluit, deelnemers, actiehouder en deadline moeten controleerbaar zijn vastgelegd.',
     expectedResult: 'De volgende stap richting een passende vervolgplek is uitgevoerd en terug te vinden in het dossier.',
     checklist: ['Status aanbieder controleren', 'Benodigde documenten verzamelen', 'Betrokkenen informeren', 'Vervolgdatum vastleggen'],
-    roles: ['Begeleider', 'Zorgmanager'],
+    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Zorgmanager', 'Locatieleider'],
   },
   {
     type: 'Evaluatie',
@@ -72,7 +72,7 @@ const templates: TaskTemplate[] = [
     policyReason: 'Medewerkershandboek: het zorgplan wordt bijgehouden en de zorg wordt periodiek geëvalueerd.',
     expectedResult: 'De voortgang, doelen, besluiten en nieuwe afspraken zijn samen beoordeeld en vastgelegd.',
     checklist: ['Voortgang doelen controleren', 'Jongere betrekken', 'Netwerk of verwijzer uitnodigen', 'Nieuwe afspraken vastleggen'],
-    roles: ['Begeleider', 'Zorgmanager'],
+    roles: ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider', 'Zorgmanager', 'Locatieleider'],
   },
 ]
 

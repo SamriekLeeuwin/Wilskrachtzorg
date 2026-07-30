@@ -43,7 +43,7 @@ function WerkvoorraadPage() {
   const visible = useMemo(() => actions.filter((item) => {
     const roleMatches =
       role === 'Gedragswetenschapper' ? ['UVO', 'Herstelgesprek'].includes(item.type) :
-      role === 'Directie' ? ['Vandaag', 'Te laat'].includes(item.urgency) :
+      ['Directie', 'Management'].includes(role) ? ['Vandaag', 'Te laat'].includes(item.urgency) :
       true
     return item.status === 'Open' &&
       roleMatches &&
@@ -110,7 +110,7 @@ function WerkvoorraadPage() {
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
                     {['UVO', 'Herstelgesprek', 'Evaluatie'].includes(item.type) && <Button component={RouterLink} to={`/jongeren/${item.clientCode}/afspraak/nieuw?type=${item.type}&task=${item.id}`} size="small" variant="outlined" startIcon={<CalendarMonthRoundedIcon />} sx={{ fontSize: 10.5 }}>Inplannen</Button>}
                     <Button component={RouterLink} to={`/acties/${item.id}/bewerken`} size="small" variant="outlined" startIcon={<EditRoundedIcon />} sx={{ fontSize: 10.5 }}>Wijzigen</Button>
-                    <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={role === 'Directie'} sx={{ fontSize: 10.5 }}>Afronden</Button>
+                    <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={['Directie', 'Management'].includes(role)} sx={{ fontSize: 10.5 }}>Afronden</Button>
                   </Stack>
                 </Stack>
               </Box>
