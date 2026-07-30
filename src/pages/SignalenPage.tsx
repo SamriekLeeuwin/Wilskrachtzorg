@@ -5,7 +5,7 @@ import {
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { loadTrajectories, loadWorkQueue } from '../data/demoStore'
 import { workItems } from '../data/careInsights'
 import { deriveSignals, type CareSignal } from '../data/signals'
@@ -26,8 +26,11 @@ function roleAllows(signal: CareSignal, role: string) {
 
 export default function SignalenPage() {
   const { role } = useWorkspaceRole()
-  const [type, setType] = useState('Alle typen')
-  const [priority, setPriority] = useState('Alle prioriteiten')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedType = searchParams.get('type')
+  const requestedPriority = searchParams.get('priority')
+  const [type, setType] = useState(['Doorstroom', 'Veiligheid', 'Evaluatie', 'Datakwaliteit'].includes(requestedType ?? '') ? requestedType! : 'Alle typen')
+  const [priority, setPriority] = useState(['Kritiek', 'Hoog', 'Normaal'].includes(requestedPriority ?? '') ? requestedPriority! : 'Alle prioriteiten')
   const allTasks = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))), [])
   const openTasks = allTasks.filter((item) => item.status === 'Open')
   const signals = useMemo(() => deriveSignals(loadTrajectories(), allTasks), [allTasks])
@@ -57,12 +60,28 @@ export default function SignalenPage() {
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <FormControl size="small" sx={{ minWidth: 160 }}>
-              <Select value={type} onChange={(event) => setType(event.target.value)} inputProps={{ 'aria-label': 'Signaaltype' }}>
+              <Select value={type} onChange={(event) => {
+                const next = event.target.value
+                setType(next)
+                setSearchParams((current) => {
+                  if (next === 'Alle typen') current.delete('type')
+                  else current.set('type', next)
+                  return current
+                })
+              }} inputProps={{ 'aria-label': 'Signaaltype' }}>
                 {['Alle typen', 'Doorstroom', 'Veiligheid', 'Evaluatie', 'Datakwaliteit'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 170 }}>
-              <Select value={priority} onChange={(event) => setPriority(event.target.value)} inputProps={{ 'aria-label': 'Prioriteit' }}>
+              <Select value={priority} onChange={(event) => {
+                const next = event.target.value
+                setPriority(next)
+                setSearchParams((current) => {
+                  if (next === 'Alle prioriteiten') current.delete('priority')
+                  else current.set('priority', next)
+                  return current
+                })
+              }} inputProps={{ 'aria-label': 'Prioriteit' }}>
                 {['Alle prioriteiten', 'Kritiek', 'Hoog', 'Normaal'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </Select>
             </FormControl>

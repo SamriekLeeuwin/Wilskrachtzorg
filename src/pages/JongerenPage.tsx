@@ -16,6 +16,7 @@ function JongerenPage() {
   const { role } = useWorkspaceRole()
   const [searchParams] = useSearchParams()
   const requestedAction = searchParams.get('actie')
+  const attentionFilter = searchParams.get('attention')
   const [rows] = useState<Trajectory[]>(loadTrajectories)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('Actief')
@@ -29,12 +30,14 @@ function JongerenPage() {
     const matchesStatus = status === 'Alle trajecten' || (status === 'Actief' ? !row.endDate : Boolean(row.endDate))
     const matchesLocation = location === 'Alle locaties' || row.location === location
     const matchesOrigin = origin === 'Alle gemeenten' || row.originMunicipality === origin
-    return matchesSearch && matchesStatus && matchesLocation && matchesOrigin
-  }), [rows, search, status, location, origin])
+    const matchesAttention = attentionFilter !== 'overdue' || (!row.endDate && row.expectedEndDate < '2026-07-28')
+    return matchesSearch && matchesStatus && matchesLocation && matchesOrigin && matchesAttention
+  }), [rows, search, status, location, origin, attentionFilter])
 
   return (
     <Stack spacing={2.5}>
       {requestedAction && <Alert severity="info">Kies de jongere waarvoor u {requestedAction === 'afspraak' ? 'een afspraak wilt plannen of iemand wilt uitnodigen' : requestedAction === 'netwerkcontact' ? 'contact met gemeente of verwijzer wilt vastleggen' : 'dossiergegevens wilt wijzigen'}.</Alert>}
+      {attentionFilter === 'overdue' && <Alert severity="warning">Dashboardselectie actief: alleen actieve trajecten boven de verwachte einddatum worden getoond. <Button component={RouterLink} to="/jongeren" size="small">Toon alle dossiers</Button></Alert>}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5}>
         <Box>
           <Typography sx={{ fontSize: 13.5, fontWeight: 720, color: '#314b61' }}>{filtered.length} trajecten zichtbaar</Typography>

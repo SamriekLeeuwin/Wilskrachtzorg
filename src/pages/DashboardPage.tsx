@@ -131,8 +131,8 @@ function DashboardPage() {
       </Stack>
 
       {role === 'Directie' && (
-        <Alert severity="warning">
-          Bestuurlijke besluiten over ernstige of meldplichtige incidenten en eventuele IGJ-opvolging zijn nog niet als formele workflow gekoppeld. Dit prototype toont alleen aggregaten.
+        <Alert severity="info" action={<Button component={RouterLink} to="/beoordelingen" size="small">Open escalaties</Button>}>
+          Incidentcijfers tonen patronen. Individuele casuïstiek bereikt directie uitsluitend via een bestuurlijke escalatiesamenvatting; een eventuele IGJ-melding blijft een afzonderlijke formele organisatiehandeling.
         </Alert>
       )}
 
@@ -183,30 +183,30 @@ function DashboardPage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: role === 'Directie' ? 'repeat(3, 1fr)' : undefined, xl: role === 'Directie' ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)' }, gap: 1.7 }}>
         {role === 'Directie' ? (
           <>
-            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${reporting.window.label} · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<Groups2RoundedIcon />} />
-            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${reporting.exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} />
-            <KpiCard label="Mediane duur bij uitstroom" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${completed.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} />
+            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${reporting.window.label} · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<Groups2RoundedIcon />} to="/rapportages?focus=active" />
+            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${reporting.exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} to="/rapportages?focus=outflow" />
+            <KpiCard label="Mediane duur bij uitstroom" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${completed.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} to="/rapportages?focus=duration" />
           </>
         ) : showManagement ? (
           <>
-            <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
-            <KpiCard label="Vervolgplek geregeld" value={reporting.placementSnapshotAvailable ? `${arranged.length}/${reporting.placementNeeded.length}` : '–'} context={reporting.placementSnapshotAvailable ? `${needsPlacement.length} dossiers nog in zoek- of wachtfase` : 'Historische vervolgplekstatus niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={reporting.placementNeeded.length && arranged.length / reporting.placementNeeded.length >= .8 ? 'green' : 'amber'} />
-            <KpiCard label="Open acties" value={String(visibleDashboardActions.length)} context={`${visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length} vandaag of te laat`} icon={<CheckCircleRoundedIcon />} tone="blue" />
-            <KpiCard label="Datakwaliteit" value={`${completeness}%`} context={`${qualityIssues.length} veldcontroles · bronreconciliatie ${reporting.incidentReconciliation.available ? reporting.incidentReconciliation.matches ? 'akkoord' : 'vraagt aandacht' : 'historisch niet beschikbaar'}`} benchmark="vrijgave ≥95% en 0 blokkades" icon={<AssignmentLateRoundedIcon />} tone={completeness >= 95 && !reporting.blockingIssues.length && sourceReconciliationOk ? 'green' : 'amber'} />
+            <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} to="/jongeren?attention=overdue" actionLabel="Bekijk betrokken dossiers" />
+            <KpiCard label="Vervolgplek geregeld" value={reporting.placementSnapshotAvailable ? `${arranged.length}/${reporting.placementNeeded.length}` : '–'} context={reporting.placementSnapshotAvailable ? `${needsPlacement.length} dossiers nog in zoek- of wachtfase` : 'Historische vervolgplekstatus niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={reporting.placementNeeded.length && arranged.length / reporting.placementNeeded.length >= .8 ? 'green' : 'amber'} to="/uitstroom-registratie" />
+            <KpiCard label="Open acties" value={String(visibleDashboardActions.length)} context={`${visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length} vandaag of te laat`} icon={<CheckCircleRoundedIcon />} tone="blue" to="/acties" actionLabel="Open werkvoorraad" />
+            <KpiCard label="Datakwaliteit" value={`${completeness}%`} context={`${qualityIssues.length} veldcontroles · bronreconciliatie ${reporting.incidentReconciliation.available ? reporting.incidentReconciliation.matches ? 'akkoord' : 'vraagt aandacht' : 'historisch niet beschikbaar'}`} benchmark="vrijgave ≥95% en 0 blokkades" icon={<AssignmentLateRoundedIcon />} tone={completeness >= 95 && !reporting.blockingIssues.length && sourceReconciliationOk ? 'green' : 'amber'} to="/kpi-overzicht" actionLabel="Bekijk controles" />
           </>
         ) : isGuidanceRole ? (
           <>
-            <KpiCard label="Mijn open acties" value={String(visibleDashboardActions.length)} context="Uitvoeren of van een resultaat voorzien" icon={<CheckCircleRoundedIcon />} tone="blue" />
-            <KpiCard label="Vandaag of te laat" value={String(visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length)} context="Heeft als eerste aandacht nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
-            <KpiCard label="Actieve dossiers" value={String(active.length)} context="Democase: dossiers binnen de werkruimte" icon={<Groups2RoundedIcon />} tone="green" />
-            <KpiCard label="Doorstroomsignalen" value={String(roleSignals.filter((item) => item.type === 'Doorstroom').length)} context="Vervolgplek of einddatum vraagt opvolging" icon={<HomeWorkRoundedIcon />} tone="amber" />
+            <KpiCard label="Mijn open acties" value={String(visibleDashboardActions.length)} context="Uitvoeren of van een resultaat voorzien" icon={<CheckCircleRoundedIcon />} tone="blue" to="/acties" actionLabel="Open mijn taken" />
+            <KpiCard label="Vandaag of te laat" value={String(visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length)} context="Heeft als eerste aandacht nodig" icon={<AssignmentLateRoundedIcon />} tone="red" to="/acties?urgency=attention" actionLabel="Bekijk urgente taken" />
+            <KpiCard label="Actieve dossiers" value={String(active.length)} context="Democase: dossiers binnen de werkruimte" icon={<Groups2RoundedIcon />} tone="green" to="/jongeren" actionLabel="Open dossiers" />
+            <KpiCard label="Doorstroomsignalen" value={String(roleSignals.filter((item) => item.type === 'Doorstroom').length)} context="Vervolgplek of einddatum vraagt opvolging" icon={<HomeWorkRoundedIcon />} tone="amber" to="/signalen?type=Doorstroom" actionLabel="Bekijk signalen" />
           </>
         ) : (
           <>
-            <KpiCard label="Open veiligheidssignalen" value={String(roleSignals.length)} context="Inhoudelijke beoordeling of herstelopvolging nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
-            <KpiCard label="Herstelopvolging open" value={String(roleSignals.filter((item) => item.title.includes('Herstel')).length)} context="Herstelgesprek of vervolgmaatregel ontbreekt" icon={<CheckCircleRoundedIcon />} tone="amber" />
-            <KpiCard label="Zware incidenten" value={String(incidentRowsInPeriod.filter((item) => item.severity === 'Zwaar').length)} context={reporting.window.label} icon={<AssignmentLateRoundedIcon />} tone="red" />
-            <KpiCard label="Gemeentelijke opvolging" value={String(networkAttention.length)} context="Reactie, aanvulling of deadline vraagt actie" icon={<Groups2RoundedIcon />} tone={networkAttention.length ? 'amber' : 'green'} />
+            <KpiCard label="Open veiligheidssignalen" value={String(roleSignals.length)} context="Inhoudelijke beoordeling of herstelopvolging nodig" icon={<AssignmentLateRoundedIcon />} tone="red" to="/signalen?type=Veiligheid" actionLabel="Bekijk veiligheidssignalen" />
+            <KpiCard label="Herstelopvolging open" value={String(roleSignals.filter((item) => item.title.includes('Herstel')).length)} context="Herstelgesprek of vervolgmaatregel ontbreekt" icon={<CheckCircleRoundedIcon />} tone="amber" to="/acties?type=Herstelgesprek" actionLabel="Open herstelwerkvoorraad" />
+            <KpiCard label="Zware incidenten" value={String(incidentRowsInPeriod.filter((item) => item.severity === 'Zwaar').length)} context={reporting.window.label} icon={<AssignmentLateRoundedIcon />} tone="red" to="/gedrag-analyse?focus=heavy" />
+            <KpiCard label="Gemeentelijke opvolging" value={String(networkAttention.length)} context="Reactie, aanvulling of deadline vraagt actie" icon={<Groups2RoundedIcon />} tone={networkAttention.length ? 'amber' : 'green'} to="/acties?type=Gemeentecontact" actionLabel="Open opvolging" />
           </>
         )}
       </Box>

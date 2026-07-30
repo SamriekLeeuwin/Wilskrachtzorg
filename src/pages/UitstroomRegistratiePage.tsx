@@ -29,26 +29,30 @@ function UitstroomRegistratiePage() {
   const canUpdate = role === 'Zorgmanager'
   const [searchParams, setSearchParams] = useSearchParams()
   const clientFilter = searchParams.get('client')
+  const dashboardStatus = searchParams.get('status')
   const candidates = useMemo(() => loadTrajectories().filter((item) => !item.endDate && item.followUpPlace !== 'Niet nodig'), [])
-  const [status, setStatus] = useState('Alle statussen')
+  const [status, setStatus] = useState(dashboardStatus === 'Definitief akkoord' ? dashboardStatus : 'Alle statussen')
   const [conversations] = useState<PlacementConversation[]>(loadPlacementConversations)
   const visibleConversations = useMemo(
     () => conversations.filter((item) => !clientFilter || item.clientCode === clientFilter),
     [clientFilter, conversations],
   )
+  const arranged = useMemo(() => candidates.filter((item) => item.followUpPlace === 'Definitief akkoord'), [candidates])
+  const atRisk = useMemo(() => candidates.filter((item) => ['Nog niet gestart', 'Zoeken', 'Wachtlijst'].includes(item.followUpPlace) && item.plannedOutflow && new Date(item.plannedOutflow) < new Date('2026-10-01')), [candidates])
   const rows = useMemo(() => candidates.filter((item) =>
     (!clientFilter || item.clientCode === clientFilter) &&
-    (status === 'Alle statussen' || item.followUpPlace === status)
-  ), [status, candidates, clientFilter])
-  const arranged = candidates.filter((item) => item.followUpPlace === 'Definitief akkoord')
-  const atRisk = candidates.filter((item) => ['Nog niet gestart', 'Zoeken', 'Wachtlijst'].includes(item.followUpPlace) && item.plannedOutflow && new Date(item.plannedOutflow) < new Date('2026-10-01'))
+    (status === 'Alle statussen' || item.followUpPlace === status) &&
+    (dashboardStatus !== 'open' || ['Nog niet gestart', 'Zoeken', 'Wachtlijst'].includes(item.followUpPlace)) &&
+    (dashboardStatus !== 'risk' || atRisk.some((row) => row.id === item.id))
+  ), [status, candidates, clientFilter, dashboardStatus, atRisk])
   return (
     <Stack spacing={2.5}>
+      {dashboardStatus && <Alert severity="info">Dashboardselectie actief: {dashboardStatus === 'risk' ? 'dossiers met risico op vertraging' : dashboardStatus === 'open' ? 'zoekroutes zonder definitief akkoord' : 'definitief geregelde vervolgplekken'}. <Button component={RouterLink} to="/uitstroom-registratie" size="small">Wis selectie</Button></Alert>}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        <KpiCard label="Vervolgplek nodig" value={String(candidates.length)} context="Actieve trajecten met uitstroomvoorbereiding" icon={<HomeWorkRoundedIcon />} />
-        <KpiCard label="Definitief geregeld" value={String(arranged.length)} context={candidates.length ? `${Math.round((arranged.length / candidates.length) * 100)}% van de benodigde vervolgplekken` : 'Geen actieve trajecten met vervolgplekbehoefte'} icon={<TaskAltRoundedIcon />} tone="green" />
-        <KpiCard label="Zoeken of wachtlijst" value={String(candidates.length - arranged.length)} context="Nog geen definitief akkoord ontvangen" icon={<PendingActionsRoundedIcon />} tone="amber" />
-        <KpiCard label="Risico op vertraging" value={String(atRisk.length)} context="Uitstroom binnen 2 maanden, plek niet definitief" icon={<WarningAmberRoundedIcon />} tone={atRisk.length ? 'red' : 'green'} />
+        <KpiCard label="Vervolgplek nodig" value={String(candidates.length)} context="Actieve trajecten met uitstroomvoorbereiding" icon={<HomeWorkRoundedIcon />} to="/uitstroom-registratie" actionLabel="Toon alle dossiers" />
+        <KpiCard label="Definitief geregeld" value={String(arranged.length)} context={candidates.length ? `${Math.round((arranged.length / candidates.length) * 100)}% van de benodigde vervolgplekken` : 'Geen actieve trajecten met vervolgplekbehoefte'} icon={<TaskAltRoundedIcon />} tone="green" to="/uitstroom-registratie?status=Definitief%20akkoord" actionLabel="Bekijk geregelde plekken" />
+        <KpiCard label="Zoeken of wachtlijst" value={String(candidates.length - arranged.length)} context="Nog geen definitief akkoord ontvangen" icon={<PendingActionsRoundedIcon />} tone="amber" to="/uitstroom-registratie?status=open" actionLabel="Bekijk open zoekroutes" />
+        <KpiCard label="Risico op vertraging" value={String(atRisk.length)} context="Uitstroom binnen 2 maanden, plek niet definitief" icon={<WarningAmberRoundedIcon />} tone={atRisk.length ? 'red' : 'green'} to="/uitstroom-registratie?status=risk" actionLabel="Bekijk risicodossiers" />
       </Box>
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>

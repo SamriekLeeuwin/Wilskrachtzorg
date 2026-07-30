@@ -41,6 +41,7 @@ function WerkvoorraadPage() {
   }))
   const [actions, setActions] = useState<ActionRow[]>(loadCurrentActions)
   const requestedType = searchParams.get('type')
+  const urgencyFilter = searchParams.get('urgency')
   const [typeFilter, setTypeFilter] = useState(
     ['UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie', 'Gemeentecontact'].includes(requestedType ?? '')
       ? requestedType!
@@ -68,9 +69,10 @@ function WerkvoorraadPage() {
   const visible = useMemo(() => actions.filter((item) => {
     return item.status === 'Open' &&
       workItemVisibleForRole(item, role) &&
+      (urgencyFilter !== 'attention' || ['Vandaag', 'Te laat'].includes(item.urgency)) &&
       (typeFilter === 'Alle typen' || item.type === typeFilter) &&
       (ownerFilter === 'Alle verantwoordelijken' || item.owner === ownerFilter)
-  }), [actions, ownerFilter, role, typeFilter])
+  }), [actions, ownerFilter, role, typeFilter, urgencyFilter])
 
   const completeAction = () => {
     if (!selected || !completionNote.trim()) return
@@ -102,6 +104,7 @@ function WerkvoorraadPage() {
     <Stack spacing={2.5}>
       {searchParams.get('created') === '1' && <Alert severity="success">De taak is toegevoegd en staat nu in de werkvoorraad.</Alert>}
       {searchParams.get('updated') === '1' && <Alert severity="success">De taak, taakverantwoordelijke en deadline zijn bijgewerkt.</Alert>}
+      {urgencyFilter === 'attention' && <Alert severity="info">Dashboardselectie actief: alleen taken van vandaag en te late taken worden getoond. <Button component={RouterLink} to="/acties" size="small">Toon alle taken</Button></Alert>}
       {conflictMessage && <Alert severity="warning" onClose={() => setConflictMessage('')}>{conflictMessage}</Alert>}
       <Box sx={{ p: 2.3, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
         <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Werkvoorraad voor {role.toLowerCase()}</Typography>

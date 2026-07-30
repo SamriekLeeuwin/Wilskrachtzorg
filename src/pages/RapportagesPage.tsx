@@ -5,7 +5,7 @@ import QueryStatsRoundedIcon from '@mui/icons-material/QueryStatsRounded'
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded'
 import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
 import {
@@ -18,6 +18,8 @@ import { buildReportingSnapshot } from '../data/reporting'
 
 function RapportagesPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const focus = searchParams.get('focus')
   const { role } = useWorkspaceRole()
   const canOpenDossiers = role === 'Zorgmanager'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
@@ -133,18 +135,29 @@ function RapportagesPage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, gap: 1.7 }}>
         {role === 'Directie' ? (
           <>
-            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${filtered.length} trajecten raakten de periode · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<RouteRoundedIcon />} />
-            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} />
-            <KpiCard label="Mediane verblijfsduur" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${closedDurations.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<AccessTimeRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} />
+            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${filtered.length} trajecten raakten de periode · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<RouteRoundedIcon />} to="/rapportages?focus=active" />
+            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} to="/rapportages?focus=outflow" />
+            <KpiCard label="Mediane verblijfsduur" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${closedDurations.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<AccessTimeRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} to="/rapportages?focus=duration" />
           </>
         ) : (
           <>
-            <KpiCard label="Boven verwachte einddatum" value={String(reporting.overdueAtPeriodEnd.length)} context={`${active.length} actieve trajecten aan periode-einde`} benchmark="conceptdoel: 0" icon={<QueryStatsRoundedIcon />} tone={reporting.overdueAtPeriodEnd.length ? 'red' : 'green'} />
-            <KpiCard label="Vervolgplek geregeld" value={placementSnapshotAvailable ? (placementNeeded.length ? `${Math.round((placementArranged.length / placementNeeded.length) * 100)}%` : 'n.v.t.') : '–'} context={placementSnapshotAvailable ? `${placementArranged.length} van ${placementNeeded.length} actieve trajecten waarvoor een plek nodig is` : 'Historische vervolgplekstatus is niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={placementNeeded.length && placementArranged.length / placementNeeded.length >= .8 ? 'green' : 'amber'} />
-            <KpiCard label="Blokkerende datacontroles" value={String(blockingIssues)} context={`${completeness}% compleet · ${filtered.length} trajecten gecontroleerd`} benchmark="vrijgave: 0 blokkades" icon={<QueryStatsRoundedIcon />} tone={blockingIssues ? 'red' : completeness >= 95 ? 'green' : 'amber'} />
+            <KpiCard label="Boven verwachte einddatum" value={String(reporting.overdueAtPeriodEnd.length)} context={`${active.length} actieve trajecten aan periode-einde`} benchmark="conceptdoel: 0" icon={<QueryStatsRoundedIcon />} tone={reporting.overdueAtPeriodEnd.length ? 'red' : 'green'} to="/jongeren?attention=overdue" actionLabel="Bekijk betrokken dossiers" />
+            <KpiCard label="Vervolgplek geregeld" value={placementSnapshotAvailable ? (placementNeeded.length ? `${Math.round((placementArranged.length / placementNeeded.length) * 100)}%` : 'n.v.t.') : '–'} context={placementSnapshotAvailable ? `${placementArranged.length} van ${placementNeeded.length} actieve trajecten waarvoor een plek nodig is` : 'Historische vervolgplekstatus is niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={placementNeeded.length && placementArranged.length / placementNeeded.length >= .8 ? 'green' : 'amber'} to="/uitstroom-registratie" />
+            <KpiCard label="Blokkerende datacontroles" value={String(blockingIssues)} context={`${completeness}% compleet · ${filtered.length} trajecten gecontroleerd`} benchmark="vrijgave: 0 blokkades" icon={<QueryStatsRoundedIcon />} tone={blockingIssues ? 'red' : completeness >= 95 ? 'green' : 'amber'} to="/kpi-overzicht" actionLabel="Bekijk controles" />
           </>
         )}
       </Box>
+
+      {role === 'Directie' && focus && (
+        <Alert severity="info">
+          <strong>Onderbouwing geselecteerd:</strong>{' '}
+          {focus === 'active'
+            ? `${active.length} trajecten waren actief op het einde van ${period.label}. Gebruik de organisatie- en gemeentelijke indicatoren hieronder om capaciteit en concentratie te duiden.`
+            : focus === 'outflow'
+              ? `${reporting.plannedExits.length} van ${exitsInPeriod.length} uitstroomtrajecten was gepland. De verblijfsduurverdeling hieronder laat zien waar vertraging kan zitten.`
+              : `De mediaan is gebaseerd op ${closedDurations.length} trajecten met een uitstroomdatum binnen de geselecteerde periode. Trajecten zonder uitstroom tellen niet mee.`}
+        </Alert>
+      )}
 
       <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Box sx={{ px: 2.5, py: 2 }}>
