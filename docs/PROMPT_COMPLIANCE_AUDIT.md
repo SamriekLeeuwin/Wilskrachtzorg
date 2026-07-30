@@ -1,28 +1,28 @@
 # Controle op naleving van de UX-opdracht
 
-## Update na rolvalidatie van 30 juli 2026
+## Update na tweede kernflowvalidatie van 30 juli 2026
 
-De kernflows zijn inmiddels per rol doorgelopen en vastgelegd in `ROLE_FLOW_VALIDATION.md`. Het gebruikstestscript met scenario's en open organisatievragen staat in `USER_TEST_SCRIPT.md`.
+De kernflows zijn inmiddels per rol doorgelopen en vastgelegd in `ROLE_FLOW_VALIDATION.md`. De zes belangrijkste productoppervlakken zijn langs alle 21 promptonderdelen gecontroleerd in `CORE_FLOW_AUDIT_V2.md`. Het gebruikstestscript met scenario's en open organisatievragen staat in `USER_TEST_SCRIPT.md`.
 
-Sinds de oorspronkelijke controle zijn onder andere dossierfallback, generieke cliëntdata, rechtenfeedback, rolgebonden knoppen en taken, vroegtijdige taakafronding, uitnodigingsvalidatie, afspraakuitkomsten, datumvalidaties, parallelle taakupdates, administratieve least-privilegeweergave en historische rapportageperioden verbeterd.
+Sinds de oorspronkelijke controle zijn onder andere dossierfallback, rolgebonden knoppen en mutatierechten, UVO-deduplicatie, cross-client-taakkoppeling, gemeente-/verwijzercontact, contactreacties, gegevensdeling, afspraakuitkomsten, datumvalidaties, parallelle taakupdates, directie-aggregatie en historische rapportageperioden verbeterd.
 
-De opdracht blijft bewust niet als volledig voltooid gemarkeerd. Echte gebruikerstests, server-side autorisatie, bronintegraties, async loading/error/sync, volledige audittrail, documentflow en formele incidentgovernance ontbreken nog.
+De opdracht blijft bewust niet als volledig voltooid gemarkeerd. Echte gebruikerstests, server-side autorisatie, bronintegraties, async loading/error/sync, een server-side audittrail, documentflow en formele incidentgovernance ontbreken nog.
 
 ## Conclusie
 
-De opdracht is nog niet volledig uitgevoerd. De basisrichting is bruikbaar, maar alleen het dashboard heeft een document met de 21 gevraagde onderdelen. Ook dat document beantwoordt niet iedere onderliggende vraag afzonderlijk en beschrijft deels gewenst gedrag dat nog niet in het prototype is geïmplementeerd.
+De kern van de opdracht is voor dashboard, cliëntdossier, netwerkcontact, taak/afspraak, managementrapportage en databetrouwbaarheid uitgevoerd en aantoonbaar getest. Niet iedere ondersteunende route heeft al een afzonderlijke 21-puntenaudit; daarom is volledige promptcompliance nog niet eerlijk.
 
 ## Compliance-overzicht
 
 | Onderdeel uit de opdracht | Status | Belangrijkste hiaat |
 |---|---|---|
-| Alle genoemde gebruikersrollen | Voldaan | Rollen zijn toegevoegd; echte autorisatie ontbreekt nog |
+| Alle afgesproken gebruikersrollen | Voldaan | Exact vier rollen; echte identiteit en serverautorisatie ontbreken nog |
 | Informatie binnen vijf seconden | Voldaan | Urgentie en directe acties staan bovenaan |
 | Dagelijkse, wekelijkse en maandelijkse informatie per rol | Deels | Dagflows zijn uitgewerkt; week-/maandfrequenties moeten met medewerkers worden gevalideerd |
 | Kritiek versus aanvullende informatie | Deels | Kritieke signalen en werk staan bovenaan; prioriteit wacht op praktijkvalidatie |
 | Beslissingen en frustraties per rol | Deels | Kerntaken en beslismomenten zijn uitgewerkt; frustraties moeten uit gebruikerstests komen |
 | Alle vereenvoudigingsvragen per pagina | Niet voldaan | Niet per vraag en niet voor alle pagina's uitgevoerd |
-| Iedere knop verantwoorden | Niet voldaan | Button-audit ontbreekt |
+| Iedere knop verantwoorden | Deels | Kernoppervlakken zijn gecontroleerd; ondersteunende demonstratieroutes nog niet allemaal |
 | Volledige flow inclusief terug, opnieuw openen, fouten en opslag | Deels | Kritieke taak-, melding-, afspraak-, intake- en uitstroomflows zijn hertest; serverherstel ontbreekt |
 | Alle edge cases per flow | Deels | Ongeldige URL's, conflicten, datumfouten, duplicaten en offlinewaarschuwing bestaan; API-fouten ontbreken |
 | Rechten en geen-toegangstatus | Deels | Alleen client-side RoleGate |
@@ -37,8 +37,8 @@ De opdracht is nog niet volledig uitgevoerd. De basisrichting is bruikbaar, maar
 | Lazy loading, caching en minimale API-calls | Deels | Routes worden lazy geladen; echte API-, cache- en pagineringslaag ontbreekt |
 | Accessibility | Deels | Skiplink, H1, labels en grotere kerndoelen bestaan; screenreader- en toetsenbord-QA blijft nodig |
 | Mobiel en desktop gevalideerd | Deels | Responsive opbouw bestaat; brede tabellen en echte apparaattests ontbreken |
-| Alle 21 onderdelen voor iedere pagina | Niet voldaan | Alleen dashboarddocument bestaat |
-| Pas verder na volledige validatie | Niet voldaan | Meerdere pagina's zijn gebouwd vóór volledige pagina-audits |
+| Alle 21 onderdelen voor iedere pagina | Deels | Zes kernoppervlakken zijn gedekt; ondersteunende routes nog niet afzonderlijk |
+| Pas verder na volledige validatie | Deels | Kernflows zijn opnieuw gebouwd en hertest; gebruikerstest met medewerkers ontbreekt |
 
 ## Direct gecorrigeerde terminologie
 
@@ -51,10 +51,10 @@ De opdracht is nog niet volledig uitgevoerd. De basisrichting is bruikbaar, maar
 
 ## Vereiste volgorde vanaf nu
 
-1. Dashboardanalyse aanvullen met frequentiematrix, rolworkflows, button-audit en alle fout-/edgecases.
-2. Alleen daadwerkelijk geïmplementeerde states als voltooid markeren.
-3. Dashboard opnieuw toetsen op toegankelijkheid, mobiel, lege data en foutgedrag.
-4. Daarna pas “Mijn werkvoorraad” volgens dezelfde 21 onderdelen analyseren.
-5. Dit herhalen voor iedere overige route.
+1. Voer het bestaande gebruikstestscript uit met minimaal één medewerker per rol.
+2. Laat Wilskracht Zorg de begrippen, bevoegdheden en KPI-definities formeel vaststellen.
+3. Audit daarna de ondersteunende routes afzonderlijk volgens dezelfde 21 onderdelen.
+4. Ontwerp pas daarna API, autorisatie, integraties en serveraudittrail.
+5. Herhaal browser-, toegankelijkheids-, privacy- en bronvalidatie met echte data.
 
 Een score van 10 wordt niet toegekend zonder aantoonbare gebruikerstest, toegankelijkheidstest en validatie met echte brondata.

@@ -15,17 +15,19 @@ import { Link as RouterLink } from 'react-router-dom'
 import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
 import {
-  dataCompleteness, filterTrajectories, formatMonths, getDataQualityIssues, incidents, median, monthsBetween, workItems,
+  formatMonths, incidents, median, monthsBetween, workItems,
   workItemVisibleForRole, type Filters,
 } from '../data/careInsights'
-import { loadReports, loadTrajectories, loadWorkQueue } from '../data/demoStore'
+import { loadNetworkContacts, loadReports, loadTrajectories, loadWorkQueue } from '../data/demoStore'
 import { deriveSignals } from '../data/signals'
 import { useWorkspaceRole, type WorkspaceRole } from '../context/RoleContext'
 import { normalizeCareReport, type CareReport } from '../data/reports'
+import { contactNeedsAttention } from '../data/networkContacts'
+import { buildReportingSnapshot } from '../data/reporting'
 
 const roleFocus = {
   Begeleider: 'Registreer wat u waarneemt en ziet direct welke dossiers, signalen, afspraken en taken opvolging nodig hebben.',
-  Gedragswetenschapper: 'Start bij kritieke veiligheidssignalen, herstelopvolging en patronen in incidenten.',
+  Gedragswetenschapper: 'Start bij veiligheid, inhoudelijke beoordelingen en afspraken of reacties van gemeenten en verwijzers.',
   Zorgmanager: 'Controleer operationele opvolging en stuur op achterstanden, doorstroom en betrouwbaarheid van de vastgelegde data.',
   Directie: 'Volg de belangrijkste uitkomsten, afwijkingen ten opzichte van de norm en de onderliggende oorzaken.',
 }
@@ -41,16 +43,27 @@ function DashboardPage() {
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const allTrajectories = useMemo(() => loadTrajectories(), [])
   const reports = useMemo(() => loadReports<CareReport>([]).map(normalizeCareReport), [])
-  const filtered = useMemo(() => filterTrajectories(filters, allTrajectories), [allTrajectories, filters])
-  const active = filtered.filter((item) => !item.endDate)
-  const completed = filtered.filter((item) => item.endDate)
-  const completedDurations = completed.map((item) => monthsBetween(item.startDate, item.endDate!))
-  const averageDuration = completedDurations.length ? completedDurations.reduce((sum, value) => sum + value, 0) / completedDurations.length : 0
-  const needsPlacement = active.filter((item) => !['Niet nodig', 'Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
-  const arranged = active.filter((item) => item.followUpPlace === 'Definitief akkoord')
-  const overdue = active.filter((item) => new Date(item.expectedEndDate) < new Date('2026-07-28'))
-  const qualityIssues = getDataQualityIssues(filtered)
-  const completeness = dataCompleteness(filtered)
+  const reporting = useMemo(() => buildReportingSnapshot(filters, allTrajectories), [allTrajectories, filters])
+  const incidentRowsInPeriod = useMemo(() => incidents.filter((incident) => {
+    const trajectory = allTrajectories.find((item) => item.clientCode === incident.clientCode)
+    return incident.date >= reporting.window.start &&
+      incident.date <= reporting.window.end &&
+      (filters.location === 'Alle locaties' || incident.location === filters.location) &&
+      (filters.origin === 'Alle gemeenten' || trajectory?.originMunicipality === filters.origin)
+  }), [allTrajectories, filters.location, filters.origin, reporting.window.end, reporting.window.start])
+  const filtered = reporting.trajectoriesInPeriod
+  const active = reporting.activeAtPeriodEnd
+  const completed = reporting.exitsInPeriod
+  const needsPlacement = reporting.placementNeeded.filter((item) => !['Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
+  const arranged = reporting.placementArranged
+  const overdue = reporting.overdueAtPeriodEnd
+  const qualityIssues = reporting.qualityIssues
+  const completeness = reporting.completeness
+  const sourceReconciliationOk = !reporting.incidentReconciliation.available || reporting.incidentReconciliation.matches
+  const plannedExitRate = reporting.exitsInPeriod.length
+    ? Math.round((reporting.plannedExits.length / reporting.exitsInPeriod.length) * 100)
+    : null
+  const networkAttention = useMemo(() => loadNetworkContacts().filter((item) => contactNeedsAttention(item)), [])
   const allDashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))), [])
   const dashboardActions = allDashboardActions.filter((item) => item.status === 'Open')
   const signals = useMemo(() => deriveSignals(allTrajectories, allDashboardActions), [allTrajectories, allDashboardActions])
@@ -68,22 +81,24 @@ function DashboardPage() {
     const all = filtered
     return ['Zaanstad', 'Amsterdam', 'Beverwijk', 'Overig'].map((origin) => {
       const rows = all.filter((item) => item.originMunicipality === origin)
-      const closed = rows.filter((item) => item.endDate)
+      const closed = completed.filter((item) => item.originMunicipality === origin)
       const durations = closed.map((item) => monthsBetween(item.startDate, item.endDate!))
       return {
         origin,
         count: rows.length,
-        median: durations.length ? median(durations) : rows.reduce((sum, item) => sum + monthsBetween(item.startDate, item.endDate ?? '2026-07-28'), 0) / Math.max(rows.length, 1),
+        median: durations.length ? median(durations) : null,
+        exits: closed.length,
       }
     }).sort((a, b) => b.count - a.count)
-  }, [filtered])
-  const maxOrigin = Math.max(...originSummary.map((item) => item.count))
+  }, [completed, filtered])
+  const maxOrigin = Math.max(1, ...originSummary.map((item) => item.count))
   const careActionRoles: WorkspaceRole[] = ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']
   const dashboardShortcuts: Array<{ label: string; detail: string; to: string; icon: ReactNode; roles: WorkspaceRole[] }> = [
     { label: 'Melding registreren', detail: 'Veiligheids-, zorg- of datamelding', to: '/melden', icon: <CampaignRoundedIcon />, roles: careActionRoles },
     { label: 'Taak aanmaken', detail: 'Verantwoordelijke en deadline vastleggen', to: '/acties/nieuw', icon: <AddTaskRoundedIcon />, roles: careActionRoles },
     { label: 'Afspraak plannen', detail: 'Genodigden en contactgegevens', to: '/jongeren?actie=afspraak', icon: <EventAvailableRoundedIcon />, roles: careActionRoles },
     { label: 'Beoordelingen en besluiten', detail: 'Van registratie naar advies en besluit', to: '/beoordelingen', icon: <CheckCircleRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
+    { label: 'Gemeentecontact vastleggen', detail: 'Contact, reactie en deadline registreren', to: '/jongeren?actie=netwerkcontact', icon: <Groups2RoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager'] },
     { label: 'Cliëntdossier openen', detail: 'Dossier zoeken en inzien', to: '/jongeren', icon: <FolderOpenRoundedIcon />, roles: careActionRoles },
     { label: 'Dossiergegevens wijzigen', detail: 'Wijziging met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon />, roles: ['Zorgmanager'] },
     { label: 'Nieuwe intake', detail: 'Dossier en traject starten', to: '/jongeren/nieuw', icon: <Groups2RoundedIcon />, roles: ['Zorgmanager'] },
@@ -91,7 +106,15 @@ function DashboardPage() {
     { label: 'Rapportage openen', detail: 'Uitkomsten en afwijkingen', to: '/rapportages', icon: <ArrowForwardRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
     { label: 'Data controleren', detail: 'Definities en ontbrekende data', to: '/kpi-overzicht', icon: <CheckCircleRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
   ]
-  const visibleShortcuts = dashboardShortcuts.filter((item) => item.roles.includes(role))
+  const shortcutOrder: Record<WorkspaceRole, string[]> = {
+    Begeleider: ['Melding registreren', 'Taak aanmaken', 'Afspraak plannen', 'Cliëntdossier openen'],
+    Gedragswetenschapper: ['Beoordelingen en besluiten', 'Gemeentecontact vastleggen', 'Afspraak plannen', 'Taak aanmaken', 'Cliëntdossier openen'],
+    Zorgmanager: ['Beoordelingen en besluiten', 'Cliëntdossier openen', 'Uitstroom en vervolgplek', 'Data controleren', 'Nieuwe intake'],
+    Directie: ['Rapportage openen', 'Data controleren'],
+  }
+  const visibleShortcuts = shortcutOrder[role]
+    .map((label) => dashboardShortcuts.find((item) => item.label === label))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item?.roles.includes(role)))
 
   return (
     <Stack spacing={2.5}>
@@ -130,14 +153,12 @@ function DashboardPage() {
         </Box>
       )}
 
-      <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
+      {role !== 'Directie' && <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1.5}>
           <Box>
             <Typography sx={{ fontSize: 14.5, fontWeight: 780, color: '#172c42' }}>Dataketen van registratie tot besluit</Typography>
             <Typography sx={{ mt: .3, fontSize: 10.7, color: '#8492a2' }}>
-              {role === 'Directie'
-                ? 'Alleen geaggregeerde aantallen; cliëntgegevens en inhoud zijn afgeschermd. Dit zijn lokale prototypeconcepten en ze tellen niet mee in het bronbevestigde incidentcijfer.'
-                : 'Iedere stap heeft een status, rol en tijdstip en blijft terug te vinden in het dossier.'}
+              Iedere stap heeft een status, rol en tijdstip en blijft terug te vinden in het dossier.
             </Typography>
           </Box>
           {['Gedragswetenschapper', 'Zorgmanager'].includes(role) && <Button component={RouterLink} to="/beoordelingen" size="small" endIcon={<ArrowForwardRoundedIcon />}>Open werkvoorraad</Button>}
@@ -147,7 +168,7 @@ function DashboardPage() {
             { label: 'Geregistreerd', value: reports.length },
             { label: 'Te beoordelen', value: reports.filter((item) => ['Ter beoordeling', 'Herbeoordeling nodig'].includes(item.status)).length },
             { label: 'Advies gereed', value: reports.filter((item) => item.status === 'Advies gereed').length },
-            { label: role === 'Directie' ? 'Geëscaleerd' : 'Besluit vastgelegd', value: reports.filter((item) => role === 'Directie' ? item.managerDecision === 'Escaleren' : item.status === 'Besluit vastgelegd').length },
+            { label: 'Besluit vastgelegd', value: reports.filter((item) => item.status === 'Besluit vastgelegd').length },
           ].map((item) => (
             <Box key={item.label} sx={{ p: 1.4, bgcolor: '#f7f9fb', borderRadius: 1.7 }}>
               <Typography sx={{ fontSize: 9.8, color: '#7f8f9e' }}>{item.label}</Typography>
@@ -155,17 +176,23 @@ function DashboardPage() {
             </Box>
           ))}
         </Box>
-      </Box>
+      </Box>}
 
-      {showManagement && <InsightFilters value={filters} onChange={setFilters} />}
+      {showManagement && <InsightFilters value={filters} onChange={setFilters} periodOnly={role === 'Directie'} />}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        {showManagement ? (
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: role === 'Directie' ? 'repeat(3, 1fr)' : undefined, xl: role === 'Directie' ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)' }, gap: 1.7 }}>
+        {role === 'Directie' ? (
           <>
-            <KpiCard label="Actieve jongeren" value={String(active.length)} context={`${filtered.length} trajecten in de gekozen selectie`} benchmark="capaciteit: 10" icon={<Groups2RoundedIcon />} />
-            <KpiCard label="Mediane verblijfsduur" value={formatMonths(median(completedDurations))} context={`Gemiddeld ${formatMonths(averageDuration)} · ${completed.length} afgesloten`} benchmark="streefwaarde ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone="green" />
-            <KpiCard label="Vervolgplek definitief" value={`${arranged.length}/${active.filter((item) => item.followUpPlace !== 'Niet nodig').length}`} context={`${needsPlacement.length} jongeren nog in zoek- of wachtfase`} benchmark="doel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone="amber" />
+            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${reporting.window.label} · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<Groups2RoundedIcon />} />
+            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${reporting.exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} />
+            <KpiCard label="Mediane duur bij uitstroom" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${completed.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<ScheduleRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} />
+          </>
+        ) : showManagement ? (
+          <>
             <KpiCard label="Boven verwachte einddatum" value={String(overdue.length)} context="Actieve trajecten die aandacht vragen" benchmark="doel: 0" icon={<AssignmentLateRoundedIcon />} tone={overdue.length ? 'red' : 'green'} />
+            <KpiCard label="Vervolgplek geregeld" value={reporting.placementSnapshotAvailable ? `${arranged.length}/${reporting.placementNeeded.length}` : '–'} context={reporting.placementSnapshotAvailable ? `${needsPlacement.length} dossiers nog in zoek- of wachtfase` : 'Historische vervolgplekstatus niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={reporting.placementNeeded.length && arranged.length / reporting.placementNeeded.length >= .8 ? 'green' : 'amber'} />
+            <KpiCard label="Open acties" value={String(visibleDashboardActions.length)} context={`${visibleDashboardActions.filter((item) => ['Vandaag', 'Te laat'].includes(item.urgency)).length} vandaag of te laat`} icon={<CheckCircleRoundedIcon />} tone="blue" />
+            <KpiCard label="Datakwaliteit" value={`${completeness}%`} context={`${qualityIssues.length} veldcontroles · bronreconciliatie ${reporting.incidentReconciliation.available ? reporting.incidentReconciliation.matches ? 'akkoord' : 'vraagt aandacht' : 'historisch niet beschikbaar'}`} benchmark="vrijgave ≥95% en 0 blokkades" icon={<AssignmentLateRoundedIcon />} tone={completeness >= 95 && !reporting.blockingIssues.length && sourceReconciliationOk ? 'green' : 'amber'} />
           </>
         ) : isGuidanceRole ? (
           <>
@@ -178,13 +205,19 @@ function DashboardPage() {
           <>
             <KpiCard label="Open veiligheidssignalen" value={String(roleSignals.length)} context="Inhoudelijke beoordeling of herstelopvolging nodig" icon={<AssignmentLateRoundedIcon />} tone="red" />
             <KpiCard label="Herstelopvolging open" value={String(roleSignals.filter((item) => item.title.includes('Herstel')).length)} context="Herstelgesprek of vervolgmaatregel ontbreekt" icon={<CheckCircleRoundedIcon />} tone="amber" />
-            <KpiCard label="Zware incidenten" value={String(incidents.filter((item) => item.severity === 'Zwaar' && item.date >= '2026-04-29').length)} context="Laatste 90 dagen in de demodata" icon={<AssignmentLateRoundedIcon />} tone="red" />
-            <KpiCard label="UVO-acties" value={String(visibleDashboardActions.filter((item) => item.type === 'UVO').length)} context="Netwerkoverleg vraagt inhoudelijke voorbereiding" icon={<Groups2RoundedIcon />} tone="blue" />
+            <KpiCard label="Zware incidenten" value={String(incidentRowsInPeriod.filter((item) => item.severity === 'Zwaar').length)} context={reporting.window.label} icon={<AssignmentLateRoundedIcon />} tone="red" />
+            <KpiCard label="Gemeentelijke opvolging" value={String(networkAttention.length)} context="Reactie, aanvulling of deadline vraagt actie" icon={<Groups2RoundedIcon />} tone={networkAttention.length ? 'amber' : 'green'} />
           </>
         )}
       </Box>
 
-      {(showOperationalWork || showManagement) && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: showManagement ? 'minmax(0, 1.45fr) minmax(340px, .75fr)' : '1fr' }, gap: 2 }}>
+      {role === 'Gedragswetenschapper' && networkAttention.length > 0 && (
+        <Button component={RouterLink} to="/acties?type=Gemeentecontact" variant="outlined" endIcon={<ArrowForwardRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>
+          Open gemeentelijke opvolging ({networkAttention.length})
+        </Button>
+      )}
+
+      {showOperationalWork && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: showManagement ? 'minmax(0, 1.45fr) minmax(340px, .75fr)' : '1fr' }, gap: 2 }}>
         {showOperationalWork && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 2.2 }}>
@@ -231,7 +264,7 @@ function DashboardPage() {
         </Box>
         )}
 
-        {showManagement && (
+        {role === 'Zorgmanager' && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.5 }}>
           <Typography sx={{ fontSize: 15, fontWeight: 760, color: '#172c42' }}>Herkomst & verblijfsduur</Typography>
           <Typography sx={{ fontSize: 11, color: '#8492a2', mt: .3, mb: 2.25 }}>Trajecten per gemeente vóór instroom</Typography>
@@ -240,7 +273,7 @@ function DashboardPage() {
               <Box key={item.origin}>
                 <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: .6 }}>
                   <Typography sx={{ fontSize: 11.5, fontWeight: 680, color: '#3b5065' }}>{item.origin}</Typography>
-                  <Typography sx={{ fontSize: 10.5, color: '#8291a0' }}>{item.count} trajecten · {formatMonths(item.median)}</Typography>
+                  <Typography sx={{ fontSize: 10.5, color: '#8291a0' }}>{item.count} trajecten · {item.exits ? `${item.exits} uitstroom · ${formatMonths(item.median!)}` : 'geen uitstroom in periode'}</Typography>
                 </Stack>
                 <LinearProgress variant="determinate" value={(item.count / maxOrigin) * 100} sx={{ height: 7, borderRadius: 10, bgcolor: '#edf1f5', '& .MuiLinearProgress-bar': { borderRadius: 10, bgcolor: item.origin === 'Zaanstad' ? '#2e78b5' : '#80a9cc' } }} />
               </Box>
@@ -253,8 +286,8 @@ function DashboardPage() {
 
       {showManagement && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
         {[
-          { label: 'Doorstroom', value: `${arranged.length} plekken definitief`, detail: `${needsPlacement.length} dossiers vragen nog actie`, link: role === 'Directie' ? '/rapportages' : '/uitstroom-registratie' },
-          { label: 'Veiligheid', value: `${incidents.filter((item) => item.measure === 'Aantekening' && item.date >= '2026-04-29' && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} actieve aantekeningen`, detail: `${incidents.filter((item) => item.recoveryRequired && !item.recoveryCompleted && active.some((trajectory) => trajectory.clientCode === item.clientCode)).length} herstelacties open`, link: '/gedrag-analyse' },
+          { label: 'Doorstroom', value: reporting.placementSnapshotAvailable ? `${arranged.length} plekken definitief` : 'Geen historische snapshot', detail: reporting.placementSnapshotAvailable ? `${needsPlacement.length} dossiers vragen nog actie` : 'Bekijk uitstroomuitkomsten in de rapportage', link: role === 'Directie' ? '/rapportages' : '/uitstroom-registratie' },
+          { label: 'Veiligheid', value: `${incidentRowsInPeriod.length} incidentregels`, detail: `${incidentRowsInPeriod.filter((item) => item.severity === 'Zwaar').length} zwaar · ${incidentRowsInPeriod.filter((item) => item.recoveryRequired && !item.recoveryCompleted).length} herstel open`, link: '/gedrag-analyse' },
           { label: 'Datakwaliteit', value: `${completeness}% compleet`, detail: `${qualityIssues.length} controles vragen aandacht`, link: '/kpi-overzicht' },
         ].map((item) => (
           <Stack key={item.label} direction="row" alignItems="center" spacing={1.5} component={RouterLink} to={item.link} sx={{ textDecoration: 'none', p: 2, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, '&:hover': { borderColor: '#b8ccdc', bgcolor: '#fbfdff' } }}>

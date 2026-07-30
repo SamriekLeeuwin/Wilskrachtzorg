@@ -19,6 +19,7 @@ export type CareAppointment = {
   decision?: string
   followUp?: string
   completedAt?: string
+  createdAt?: string
   createdByRole?: WorkspaceRole
   requiredRoles?: WorkspaceRole[]
   invitations?: Array<{
@@ -30,6 +31,13 @@ export type CareAppointment = {
     status: 'Concept' | 'Verzonden' | 'Geaccepteerd' | 'Afgewezen'
     statusUpdatedAt?: string
   }>
+}
+
+export function appointmentCanBeCompletedByRole(appointment: CareAppointment, role: WorkspaceRole) {
+  if (appointment.requiredRoles?.length) return appointment.requiredRoles.includes(role)
+  if (appointment.type === 'Mentorgesprek') return ['Begeleider', 'Zorgmanager'].includes(role)
+  if (['UVO', 'Netwerkoverleg'].includes(appointment.type)) return ['Gedragswetenschapper', 'Zorgmanager'].includes(role)
+  return ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'].includes(role)
 }
 
 const wkz001Appointments: CareAppointment[] = [

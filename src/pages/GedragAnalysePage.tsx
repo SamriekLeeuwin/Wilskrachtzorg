@@ -10,17 +10,20 @@ import InsightFilters from '../components/insights/InsightFilters'
 import { incidents, type Filters } from '../data/careInsights'
 import { loadTrajectories } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
+import { getReportingWindow } from '../data/reporting'
 
 function GedragAnalysePage() {
   const { role } = useWorkspaceRole()
   const aggregateOnly = role === 'Directie'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
+  const reportingWindow = getReportingWindow(filters.period)
   const trajectoryByClient = useMemo(() => new Map(loadTrajectories().map((item) => [item.clientCode, item])), [])
   const filtered = useMemo(() => incidents.filter((incident) =>
     (filters.location === 'Alle locaties' || incident.location === filters.location) &&
     (filters.origin === 'Alle gemeenten' || trajectoryByClient.get(incident.clientCode)?.originMunicipality === filters.origin) &&
-    (filters.period === '12m' || incident.date.startsWith(filters.period))
-  ), [filters, trajectoryByClient])
+    incident.date >= reportingWindow.start &&
+    incident.date <= reportingWindow.end
+  ), [filters.location, filters.origin, reportingWindow.end, reportingWindow.start, trajectoryByClient])
   const categories = useMemo(() => Array.from(new Set(incidents.map((item) => item.category))).map((name) => {
     const count = filtered.filter((item) => item.category === name).length
     return { name, count, rate: filtered.length ? Math.round((count / filtered.length) * 100) : 0 }
@@ -46,11 +49,11 @@ function GedragAnalysePage() {
         <Typography sx={{ fontSize: 11 }}>Incidentregistratie blijft in het aangewezen bronsysteem. Deze pagina ondersteunt analyse; een productieversie moet bronstatus, synchronisatietijd en formele escalaties aantoonbaar tonen.</Typography>
       </Alert>
       {role === 'Directie' && <Alert severity="warning">De formele flow voor ernstige of meldplichtige incidenten, directiebesluit en eventuele IGJ-melding is nog niet gekoppeld. Gebruik deze prototypecijfers niet als bewijs dat een melding is beoordeeld of gedaan.</Alert>}
-      <InsightFilters value={filters} onChange={setFilters} />
+      <InsightFilters value={filters} onChange={setFilters} periodOnly={role === 'Directie'} />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
         <KpiCard label="Incidenten" value={String(filtered.length)} context={`${new Set(filtered.map((item) => item.clientCode)).size} jongeren · geselecteerde periode`} icon={<FactCheckRoundedIcon />} />
-        <KpiCard label="Zware incidenten" value={String(heavy.length)} context={`${filtered.length ? Math.round((heavy.length / filtered.length) * 100) : 0}% van alle incidenten`} icon={<GppMaybeRoundedIcon />} tone="red" />
+        <KpiCard label="Zware incidenten" value={String(heavy.length)} context={filtered.length ? `${Math.round((heavy.length / filtered.length) * 100)}% van alle incidenten` : 'Geen incidenten; aandeel is niet van toepassing'} icon={<GppMaybeRoundedIcon />} tone="red" />
         <KpiCard label="Herstelgesprek open" value={String(recoveryOpen.length)} context={`${filtered.filter((item) => item.recoveryRequired).length} herstelgesprekken vereist`} icon={<ForumRoundedIcon />} tone={recoveryOpen.length ? 'amber' : 'green'} />
         <KpiCard label="Officiële waarschuwingen" value={String(officialWarnings.length)} context="Binnen de geselecteerde rapportageperiode" icon={<EventBusyRoundedIcon />} tone="amber" />
       </Box>
@@ -74,7 +77,7 @@ function GedragAnalysePage() {
           <Box sx={{ px: 2.5, py: 2 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Incidenten en herstel per locatie</Typography><Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Locatie is een bevestigd filter; trajectfasen worden niet als incidentcategorie gebruikt</Typography></Box>
           <Divider />
           <TableContainer><Table size="small"><TableHead><TableRow>{['Locatie', 'Incidenten', 'Zwaar', 'Herstel open', 'Jongeren'].map((h) => <TableCell key={h}>{h}</TableCell>)}</TableRow></TableHead>
-            <TableBody>{locationRows.map((row) => <TableRow key={row.location}><TableCell sx={{ fontWeight: 700 }}>{row.location}</TableCell><TableCell>{row.count}</TableCell><TableCell>{row.heavy}</TableCell><TableCell>{row.recoveryOpen}</TableCell><TableCell>{row.clients}</TableCell></TableRow>)}</TableBody>
+            <TableBody>{locationRows.map((row) => <TableRow key={row.location}><TableCell sx={{ fontWeight: 700 }}>{row.location}</TableCell><TableCell>{row.count}</TableCell><TableCell>{row.heavy}</TableCell><TableCell>{row.recoveryOpen}</TableCell><TableCell>{aggregateOnly && row.clients > 0 && row.clients < 5 ? '<5' : row.clients}</TableCell></TableRow>)}</TableBody>
           </Table></TableContainer>
         </Box>
       </Box>

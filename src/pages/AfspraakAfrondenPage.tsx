@@ -6,19 +6,22 @@ import {
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
-import { defaultAppointments, type CareAppointment } from '../data/appointments'
+import { appointmentCanBeCompletedByRole, defaultAppointments, type CareAppointment } from '../data/appointments'
 import { loadAppointments, loadTrajectories, loadWorkQueue, saveAppointments, saveWorkQueue } from '../data/demoStore'
-import { workItems, type WorkItem } from '../data/careInsights'
+import { workItems, workItemVisibleForRole, type WorkItem } from '../data/careInsights'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
+import { useWorkspaceRole } from '../context/RoleContext'
 
 const followUpTypes: WorkItem['type'][] = ['UVO', 'Herstelgesprek', 'Evaluatie', 'Vervolgplek']
 
 export default function AfspraakAfrondenPage() {
+  const { role } = useWorkspaceRole()
   const { clientCode = '', appointmentId = '' } = useParams()
   const navigate = useNavigate()
   const trajectory = useMemo(() => loadTrajectories().find((item) => item.clientCode === clientCode), [clientCode])
   const appointments = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
   const appointment = appointments.find((item) => item.id === appointmentId)
+  const canCompleteForRole = Boolean(appointment && appointmentCanBeCompletedByRole(appointment, role))
   const [meetingOutcome, setMeetingOutcome] = useState<NonNullable<CareAppointment['outcome']>>('Gehouden')
   const [attendees, setAttendees] = useState(appointment?.participants ?? '')
   const [summary, setSummary] = useState('')
@@ -61,11 +64,23 @@ export default function AfspraakAfrondenPage() {
     )
   }
 
+  if (!canCompleteForRole) {
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', py: { xs: 2, md: 5 } }}>
+        <Alert severity="error">U hebt binnen de rol {role.toLowerCase()} geen recht om deze afspraak af te ronden. Er is niets gewijzigd.</Alert>
+        <Button component={RouterLink} to={`/jongeren/${clientCode}`} startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>Terug naar dossier</Button>
+      </Stack>
+    )
+  }
+
   const save = () => {
     setSubmitted(true)
-    if (!valid) return
+    if (!valid || !canCompleteForRole) return
+    const currentAppointments = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
+    const currentAppointment = currentAppointments.find((item) => item.id === appointment.id)
+    if (!currentAppointment || currentAppointment.status === 'Afgerond') return
     const completed: CareAppointment = {
-      ...appointment,
+      ...currentAppointment,
       status: 'Afgerond',
       outcome: meetingOutcome,
       attendees: attendees.trim(),
@@ -74,11 +89,20 @@ export default function AfspraakAfrondenPage() {
       followUp: followUp.trim(),
       completedAt: new Date().toISOString(),
     }
-    saveAppointments(clientCode, appointments.map((item) => item.id === appointment.id ? completed : item))
+    saveAppointments(clientCode, currentAppointments.map((item) => item.id === appointment.id ? completed : item))
 
     const queue = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' })))
-    let nextQueue = appointment.relatedTaskId && meetingOutcome === 'Gehouden'
-      ? queue.map((item): WorkItem => item.id === appointment.relatedTaskId ? {
+    const linkedTask = currentAppointment.relatedTaskId
+      ? queue.find((item) =>
+        item.id === currentAppointment.relatedTaskId &&
+        item.clientCode === clientCode &&
+        item.status !== 'Afgerond' &&
+        item.type === currentAppointment.type &&
+        workItemVisibleForRole(item, role)
+      )
+      : undefined
+    let nextQueue = linkedTask && meetingOutcome === 'Gehouden'
+      ? queue.map((item): WorkItem => item.id === linkedTask.id ? {
         ...item,
         status: 'Afgerond',
         completionNote: `${appointment.type}: ${meetingOutcome.toLowerCase()} op ${new Date(`${appointment.date}T12:00:00`).toLocaleDateString('nl-NL')}. Uitkomst, samenvatting en besluit zijn vastgelegd.`,
@@ -105,7 +129,7 @@ export default function AfspraakAfrondenPage() {
         updatedAt: completed.completedAt,
       }, ...nextQueue]
     }
-    if ((appointment.relatedTaskId && meetingOutcome === 'Gehouden') || createTask) saveWorkQueue(nextQueue)
+    if ((linkedTask && meetingOutcome === 'Gehouden') || createTask) saveWorkQueue(nextQueue)
     navigate(`/jongeren/${clientCode}?meeting=completed`)
   }
 

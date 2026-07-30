@@ -6,6 +6,7 @@ type Props = {
   value: Filters
   onChange: (value: Filters) => void
   compact?: boolean
+  periodOnly?: boolean
 }
 
 const selectSx = {
@@ -15,7 +16,7 @@ const selectSx = {
   '& .MuiSelect-select': { py: 1.05, fontSize: 12.5, fontWeight: 600, color: '#30445a' },
 }
 
-export default function InsightFilters({ value, onChange, compact = false }: Props) {
+export default function InsightFilters({ value, onChange, compact = false, periodOnly = false }: Props) {
   return (
     <Box sx={{ px: compact ? 0 : 2, py: compact ? 0 : 1.4, bgcolor: compact ? 'transparent' : '#fff', border: compact ? 0 : '1px solid #e4e9ef', borderRadius: 2.5 }}>
       <Stack direction={{ xs: 'column', lg: 'row' }} alignItems={{ xs: 'stretch', lg: 'center' }} justifyContent="space-between" gap={1.2}>
@@ -36,16 +37,19 @@ export default function InsightFilters({ value, onChange, compact = false }: Pro
               <MenuItem value="2025">Kalenderjaar 2025</MenuItem>
             </Select>
           </FormControl>
-          <FormControl size="small" sx={selectSx}>
-            <Select value={value.location} onChange={(event) => onChange({ ...value, location: event.target.value as LocationKey })} inputProps={{ 'aria-label': 'Locatie' }}>
-              {['Alle locaties', 'Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={selectSx}>
-            <Select value={value.origin} onChange={(event) => onChange({ ...value, origin: event.target.value as OriginKey })} inputProps={{ 'aria-label': 'Herkomstgemeente' }}>
-              {['Alle gemeenten', 'Zaanstad', 'Amsterdam', 'Beverwijk', 'Overig'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
-            </Select>
-          </FormControl>
+          {!periodOnly && <>
+            <FormControl size="small" sx={selectSx}>
+              <Select value={value.location} onChange={(event) => onChange({ ...value, location: event.target.value as LocationKey })} inputProps={{ 'aria-label': 'Locatie' }}>
+                {['Alle locaties', 'Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={selectSx}>
+              <Select value={value.origin} onChange={(event) => onChange({ ...value, origin: event.target.value as OriginKey })} inputProps={{ 'aria-label': 'Gemeente vóór instroom' }}>
+                <MenuItem value="Alle gemeenten">Alle gemeenten vóór instroom</MenuItem>
+                {['Zaanstad', 'Amsterdam', 'Beverwijk', 'Overig'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </>}
         </Stack>
       </Stack>
     </Box>

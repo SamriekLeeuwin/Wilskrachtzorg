@@ -1,9 +1,11 @@
 import { trajectories, placementConversations, type PlacementConversation, type Trajectory } from './careInsights'
+import { networkContacts, type NetworkContact } from './networkContacts'
 
 const TRAJECTORIES_KEY = 'wkz-demo-trajectories-v1'
 const CONVERSATIONS_KEY = 'wkz-demo-placement-conversations-v1'
 const WORK_QUEUE_KEY = 'wkz-demo-work-queue-v1'
 const REPORTS_KEY = 'wkz-demo-reports-v1'
+const NETWORK_CONTACTS_KEY = 'wkz-demo-network-contacts-v1'
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
@@ -82,4 +84,19 @@ export function loadReports<T>(fallback: T[]): T[] {
 
 export function saveReports<T>(rows: T[]) {
   if (canUseStorage()) window.localStorage.setItem(REPORTS_KEY, JSON.stringify(rows))
+}
+
+export function loadNetworkContacts(): NetworkContact[] {
+  if (!canUseStorage()) return networkContacts
+  const stored = window.localStorage.getItem(NETWORK_CONTACTS_KEY)
+  if (!stored) return networkContacts
+  try {
+    return JSON.parse(stored) as NetworkContact[]
+  } catch {
+    return networkContacts
+  }
+}
+
+export function saveNetworkContacts(rows: NetworkContact[]) {
+  if (canUseStorage()) window.localStorage.setItem(NETWORK_CONTACTS_KEY, JSON.stringify(rows))
 }

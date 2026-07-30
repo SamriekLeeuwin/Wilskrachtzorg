@@ -19,6 +19,12 @@ De belangrijkste datarisico’s uit de doorloop zijn hersteld:
 - Uitnodigingen vereisen valide contactgegevens, volgen een statusvolgorde en blijven herkenbaar als handmatige prototyperegistratie.
 - Management- en directiedrilldowns leiden niet meer naar verboden cliëntpagina’s.
 - Rapportageperioden scheiden trajecten actief aan periode-einde van uitstroom binnen de periode.
+- Dashboard en rapportage gebruiken nu dezelfde canonieke KPI-berekening.
+- Directie ziet alleen periodefilters en organisatietotalen; cliëntcodes en operationele contactdetails blijven afgeschermd.
+- Gemeente vóór instroom, verantwoordelijke gemeente en verwijzer zijn afzonderlijke gegevens.
+- Een gemeentelijk contact bevat status, persoon, besluit, eigenaar, deadline en gecontroleerde gegevensdeling.
+- Een reactie sluit het gekoppelde open contactpunt en maakt alleen bij echt vervolg een nieuwe taak.
+- Een gewone dossierroute hergebruikt een bestaande UVO-taak en weigert taak-ID’s uit een ander dossier.
 
 De oplossing is nog geen productieproduct. Echte identiteit, server-side autorisatie, Zilliz-/agenda-/berichtenkoppelingen, synchronisatie, een volledige audittrail en formele incidentgovernance ontbreken.
 
@@ -66,7 +72,7 @@ Prototype: rolgebonden signalen en taken, dossier, melding, afspraak, afronding 
 
 ### Gedragswetenschapper
 
-Binnen vijf seconden: zware incidenten, nieuwe veiligheidssignalen, open herstel/UVO, te late taken en afspraken.
+Binnen vijf seconden: zware incidenten, nieuwe veiligheidssignalen, open herstel/UVO en gemeentelijke reacties, aanvullingen of besluitdeadlines.
 
 Gewenste flow:
 
@@ -78,7 +84,7 @@ Gewenste flow:
 6. Besluit en één of meer vervolgtaken vastleggen.
 7. Bronincident, signaal, taak en dossierhistorie gecontroleerd sluiten.
 
-Prototype: incidentanalyse, aantoonbare 21-dagencontrole voor drie aantekeningen, UVO-/hersteltaken, afspraak, uitnodigingen en gestructureerde beoordeling bestaan. De beoordeling legt inhoudelijke duiding, advies, rol en tijd vast en geeft dit door aan de zorgmanager. Terugkoppeling naar het externe incidentbronsysteem ontbreekt.
+Prototype: incidentanalyse, aantoonbare 21-dagencontrole voor drie aantekeningen, UVO-/hersteltaken, afspraak, uitnodigingen, gestructureerde beoordeling en een dossiergebonden gemeente-/verwijzerketen bestaan. De beoordeling legt inhoudelijke duiding, advies, rol en tijd vast en geeft dit door aan de zorgmanager. Echte verzending en terugkoppeling naar externe systemen ontbreken.
 
 ### Zorgmanager
 
@@ -93,7 +99,7 @@ Gewenste flow:
 5. Operationeel doorklikken naar dossier, taak, intake, traject- of vervolgplekstatus.
 6. Geaggregeerd sturen op capaciteit, doorstroom, incidenten en databetrouwbaarheid.
 
-Prototype: de volledige beslisketen, operationele drilldowns, intake, trajectwijziging, vervolgplekverwerking, KPI’s en locaties bestaan. Persoonlijke locatie-/caseloadscope, vier-ogen-goedkeuring, personeelsinzet en serveraudit ontbreken.
+Prototype: de volledige beslisketen, operationele drilldowns, intake, chronologische trajectwijziging, corrigeerbare vervolgplekverwerking, gemeentelijke samenwerking, KPI’s en locaties bestaan. Persoonlijke locatie-/caseloadscope, vier-ogen-goedkeuring, personeelsinzet en serveraudit ontbreken.
 
 ### Directie
 
@@ -107,7 +113,7 @@ Gewenste flow:
 4. Maand-/kwartaalrapport met managementtoelichting beoordelen.
 5. Versie goedkeuren en publiceren.
 
-Prototype: directie ziet alleen geaggregeerde rapportage, locatie-, incident-, datakwaliteits- en dataketen-aantallen. Cliëntcodes, dossierlinks en de beoordelingswerkvoorraad zijn afgeschermd. Lokale prototypeconcepten tellen niet stil mee in het bronbevestigde incidentcijfer. De formele IGJ-, sign-off- en publicatieworkflow ontbreekt.
+Prototype: directie ziet drie bestuurlijke uitkomst-KPI’s met norm, vorige periode en dataconfidence, plus organisatiebrede rapportage. Cliëntcodes, dossierlinks, kleine-groepfilters en de operationele beoordelingsketen zijn afgeschermd. Incidentregels en trajectsamenvatting worden gereconcilieerd. De formele IGJ-, sign-off- en publicatieworkflow ontbreekt.
 
 ## Validatie van kernflows
 

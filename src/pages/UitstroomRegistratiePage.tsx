@@ -32,6 +32,10 @@ function UitstroomRegistratiePage() {
   const candidates = useMemo(() => loadTrajectories().filter((item) => !item.endDate && item.followUpPlace !== 'Niet nodig'), [])
   const [status, setStatus] = useState('Alle statussen')
   const [conversations] = useState<PlacementConversation[]>(loadPlacementConversations)
+  const visibleConversations = useMemo(
+    () => conversations.filter((item) => !clientFilter || item.clientCode === clientFilter),
+    [clientFilter, conversations],
+  )
   const rows = useMemo(() => candidates.filter((item) =>
     (!clientFilter || item.clientCode === clientFilter) &&
     (status === 'Alle statussen' || item.followUpPlace === status)
@@ -109,7 +113,7 @@ function UitstroomRegistratiePage() {
         </Box>
         <Divider />
         <Stack divider={<Divider flexItem />}>
-          {conversations.map((conversation) => (
+          {visibleConversations.map((conversation) => (
             <Box key={conversation.id} sx={{ px: 2.5, py: 2 }}>
               <Stack direction={{ xs: 'column', lg: 'row' }} gap={2} alignItems={{ lg: 'flex-start' }}>
                 <Box sx={{ minWidth: 132 }}>
@@ -132,6 +136,7 @@ function UitstroomRegistratiePage() {
               </Stack>
             </Box>
           ))}
+          {!visibleConversations.length && <Box sx={{ px: 2.5, py: 4 }}><Alert severity="info">{clientFilter ? `Geen gesprekken of besluiten gevonden voor ${clientFilter}.` : 'Er zijn nog geen gesprekken of besluiten vastgelegd.'}</Alert></Box>}
         </Stack>
       </Box>
 

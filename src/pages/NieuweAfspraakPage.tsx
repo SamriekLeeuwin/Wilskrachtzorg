@@ -8,7 +8,7 @@ import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded
 import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { workItems, type WorkItem } from '../data/careInsights'
+import { workItems, workItemVisibleForRole, type WorkItem } from '../data/careInsights'
 import { loadAppointments, loadTrajectories, loadWorkQueue, saveAppointments, saveWorkQueue } from '../data/demoStore'
 import { defaultAppointments, type CareAppointment } from '../data/appointments'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
@@ -55,8 +55,17 @@ export default function NieuweAfspraakPage() {
   const trajectory = useMemo(() => loadTrajectories().find((item) => item.clientCode === clientCode), [clientCode])
   const relatedTaskId = searchParams.get('task') ?? ''
   const queue = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' })))
-  const linkedTask = queue.find((item) => item.id === relatedTaskId)
-  const requestedType = searchParams.get('type') ?? linkedTask?.type ?? 'Mentorgesprek'
+  const requestedLinkedTask = queue.find((item) => item.id === relatedTaskId)
+  const linkedTask = requestedLinkedTask &&
+    requestedLinkedTask.clientCode === clientCode &&
+    requestedLinkedTask.status !== 'Afgerond' &&
+    ['UVO', 'Herstelgesprek', 'Evaluatie'].includes(requestedLinkedTask.type) &&
+    workItemVisibleForRole(requestedLinkedTask, role)
+    ? requestedLinkedTask
+    : undefined
+  const invalidLinkedTask = Boolean(relatedTaskId && !linkedTask)
+  const typeFromUrl = searchParams.get('type') ?? ''
+  const requestedType = linkedTask?.type ?? (templates[typeFromUrl] ? typeFromUrl : 'Mentorgesprek')
   const initial = templates[requestedType] ?? templates.Mentorgesprek
   const [type, setType] = useState(requestedType)
   const [date, setDate] = useState(tomorrow())
@@ -71,6 +80,16 @@ export default function NieuweAfspraakPage() {
   const [invite, setInvite] = useState({ name: '', role: '', contact: '', channel: 'E-mail' as 'E-mail' | 'Telefoon' })
   const [inviteError, setInviteError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const matchingOpenTask = !linkedTask
+    ? queue.find((item) =>
+      item.clientCode === clientCode &&
+      item.status !== 'Afgerond' &&
+      item.type === type &&
+      workItemVisibleForRole(item, role)
+    )
+    : undefined
+  const effectiveLinkedTask = linkedTask ?? matchingOpenTask
   const owners = Array.from(new Set(loadTrajectories().map((item) => item.supervisor)))
   const invitationRequired = type !== 'Mentorgesprek'
   const activeTemplate = templates[type] ?? templates.Mentorgesprek
@@ -132,20 +151,44 @@ export default function NieuweAfspraakPage() {
 
   const save = () => {
     setSubmitted(true)
-    if (!valid || !trajectory) return
+    setSaveError('')
+    if (!valid || !trajectory || invalidLinkedTask) return
     const createdAt = new Date().toISOString()
-    const appointmentId = `AP-${Date.now()}`
+    const appointmentId = `AP-${createdAt.replace(/\D/g, '')}`
     const taskType = type === 'Mentorgesprek' ? undefined : type as WorkItem['type']
-    const newTaskId = !linkedTask && taskType ? `A-${appointmentId}` : undefined
+    const currentQueue = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' })))
+    const currentExplicitTask = relatedTaskId
+      ? currentQueue.find((item) =>
+        item.id === relatedTaskId &&
+        item.clientCode === clientCode &&
+        item.status !== 'Afgerond' &&
+        item.type === type &&
+        workItemVisibleForRole(item, role)
+      )
+      : undefined
+    if (relatedTaskId && (!currentExplicitTask || currentExplicitTask.updatedAt !== linkedTask?.updatedAt)) {
+      setSaveError('De gekoppelde taak is intussen gewijzigd, afgerond of hoort niet bij deze afspraak. Open de actuele taak opnieuw vanuit de werkvoorraad.')
+      return
+    }
+    const currentMatchingTask = !relatedTaskId && taskType
+      ? currentQueue.find((item) =>
+        item.clientCode === clientCode &&
+        item.status !== 'Afgerond' &&
+        item.type === taskType &&
+        workItemVisibleForRole(item, role)
+      )
+      : undefined
+    const taskToLink = currentExplicitTask ?? currentMatchingTask
+    const newTaskId = !taskToLink && taskType ? `A-${appointmentId}` : undefined
     const requiredWorkspaceRoles: WorkspaceRole[] = type === 'Mentorgesprek'
       ? ['Begeleider']
       : type === 'UVO'
-        ? ['Begeleider', 'Gedragswetenschapper']
+        ? ['Gedragswetenschapper', 'Zorgmanager']
         : ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']
     const appointment: CareAppointment = {
       id: appointmentId, date, time, endTime, type, subject: subject.trim(), purpose: purpose.trim(),
-      participants: participants.join(', '), agenda, owner, relatedTaskId: linkedTask?.id ?? newTaskId,
-      status: 'Gepland', invitations, createdByRole: role, requiredRoles: requiredWorkspaceRoles,
+      participants: participants.join(', '), agenda, owner, relatedTaskId: taskToLink?.id ?? newTaskId,
+      status: 'Gepland', invitations, createdByRole: role, requiredRoles: requiredWorkspaceRoles, createdAt,
     }
     saveAppointments(clientCode, [...existingAppointments, appointment].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)))
     if (newTaskId && taskType) {
@@ -172,7 +215,7 @@ export default function NieuweAfspraakPage() {
         sourceAppointmentId: appointmentId,
         createdByRole: role,
         updatedAt: createdAt,
-      }, ...queue])
+      }, ...currentQueue])
     }
     navigate(`/jongeren/${clientCode}?appointment=created`)
   }
@@ -194,7 +237,9 @@ export default function NieuweAfspraakPage() {
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>{clientCode} · {trajectory?.location} · {trajectory?.supervisor}</Typography>
       </Box>
       {submitted && !valid && <Alert severity="warning">{!validDate ? 'De afspraakdatum mag niet in het verleden liggen.' : scheduleConflict ? 'Deze afspraak overlapt met een andere geplande afspraak in dit dossier. Kies een ander tijdstip.' : !validTimes ? 'De eindtijd moet na de starttijd liggen.' : !requiredRolesSelected ? `Selecteer de verplichte deelnemerrollen: ${requiredParticipantRoles.join(', ')}.` : 'Vul datum, tijd, onderwerp, doel, verantwoordelijke en agenda in. Voeg voor dit afspraaktype minimaal één echte genodigde met contactgegevens toe.'}</Alert>}
-      {linkedTask && <Alert severity="info">Gekoppeld aan taak “{linkedTask.title}”. De afspraak kan deze taak met bewijs afronden.</Alert>}
+      {invalidLinkedTask && <Alert severity="error">De gekoppelde taak hoort niet bij dit dossier, is al afgerond of past niet bij uw rol. Er wordt niets gewijzigd; open de taak opnieuw vanuit de werkvoorraad.</Alert>}
+      {saveError && <Alert severity="warning">{saveError}</Alert>}
+      {effectiveLinkedTask && <Alert severity="info">{matchingOpenTask ? `Er stond al een open ${matchingOpenTask.type.toLowerCase()}-taak. De afspraak wordt automatisch gekoppeld aan “${matchingOpenTask.title}”, zodat geen dubbele taak ontstaat.` : `Gekoppeld aan taak “${effectiveLinkedTask.title}”. De afspraak kan deze taak met bewijs afronden.`}</Alert>}
       {type === 'UVO' && <Alert severity="info">UVO-werkafspraak in dit prototype: de gedragswetenschapper plant samen met de mentor; de mentor verzorgt de berichtgeving aan jongere en netwerk.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
@@ -202,7 +247,7 @@ export default function NieuweAfspraakPage() {
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
             <Typography sx={{ mb: 1.7, fontSize: 13.5, fontWeight: 760 }}>1. Afspraak en doel</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.7 }}>
-              <TextField select label="Type afspraak" value={type} onChange={(event) => changeType(event.target.value)}>
+              <TextField select disabled={Boolean(relatedTaskId)} label="Type afspraak" value={type} onChange={(event) => changeType(event.target.value)} helperText={relatedTaskId ? 'Het afspraaktype is vastgezet door de gekoppelde taak.' : undefined}>
                 {Object.keys(templates).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
               <TextField required label="Onderwerp" value={subject} onChange={(event) => setSubject(event.target.value)} />
@@ -252,7 +297,7 @@ export default function NieuweAfspraakPage() {
             <Typography sx={{ fontSize: 11.2 }}>{time}–{endTime} · {owner || 'geen verantwoordelijke'}</Typography>
             <Typography sx={{ fontSize: 11.2 }}>{participants.length} deelnemerrollen · {invitations.length} uitnodigingen · {agenda.length} agendapunten</Typography>
           </Stack>
-          {linkedTask && <><Divider sx={{ my: 1.7 }} /><Alert severity="info">De gekoppelde taak blijft open. Deze wordt pas afgerond nadat de afspraakuitkomst, samenvatting en het besluit zijn vastgelegd.</Alert></>}
+          {effectiveLinkedTask && <><Divider sx={{ my: 1.7 }} /><Alert severity="info">De gekoppelde taak blijft open. Deze wordt pas afgerond nadat de afspraakuitkomst, samenvatting en het besluit zijn vastgelegd.</Alert></>}
           <Divider sx={{ my: 1.7 }} />
           <Button fullWidth size="large" variant="contained" startIcon={<EventAvailableRoundedIcon />} onClick={save}>Afspraak opslaan</Button>
           <Button fullWidth component={RouterLink} to={`/jongeren/${clientCode}`} sx={{ mt: .7 }}>Annuleren</Button>

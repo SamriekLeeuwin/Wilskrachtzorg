@@ -1,3 +1,5 @@
+import type { WorkspaceRole } from '../context/RoleContext'
+
 export type PeriodKey = '12m' | '2026' | '2025'
 export type LocationKey = 'Alle locaties' | 'Tilburg' | 'Breda' | 'Eindhoven'
 export type OriginKey = 'Alle gemeenten' | 'Zaanstad' | 'Amsterdam' | 'Beverwijk' | 'Overig'
@@ -18,6 +20,15 @@ export type Trajectory = {
   expectedEndDate: string
   previousExpectedEndDate?: string
   expectedEndDateReason?: string
+  lastChangedAt?: string
+  lastChangedByRole?: WorkspaceRole
+  lastChangeReason?: string
+  changeHistory?: Array<{
+    changedAt: string
+    changedByRole: WorkspaceRole
+    reason: string
+    previousExpectedEndDate?: string
+  }>
   endDate?: string
   currentPhase?: 'Stabilisatie' | 'Verantwoordelijkheid' | 'Onafhankelijkheid' | 'Voorbereiding uitstroom'
   supervisor: string
@@ -28,7 +39,9 @@ export type Trajectory = {
   followUpProvider?: string
   plannedOutflow?: string
   outcome?: 'Gepland' | 'Ongepland'
+  responsibleMunicipality?: string
   referrer?: string
+  referralQuestion?: string
   intakeReason?: string
   consentConfirmed?: boolean
 }
@@ -41,7 +54,7 @@ export type WorkItem = {
   due: string
   urgency: 'Vandaag' | 'Deze week' | 'Te laat'
   owner: string
-  type: 'Vervolgplek' | 'Herstelgesprek' | 'UVO' | 'Evaluatie'
+  type: 'Vervolgplek' | 'Herstelgesprek' | 'UVO' | 'Evaluatie' | 'Gemeentecontact'
   status?: 'Open' | 'Afgerond'
   policyReason?: string
   expectedResult?: string
@@ -54,6 +67,7 @@ export type WorkItem = {
   responsibleRoles?: WorkspaceRole[]
   sourceReportId?: string
   sourceAppointmentId?: string
+  sourceNetworkContactId?: string
   createdByRole?: WorkspaceRole
 }
 
@@ -86,18 +100,18 @@ export type IncidentRecord = {
 }
 
 export const trajectories: Trajectory[] = [
-  { id: 'T-001', clientCode: 'WKZ-001', originCity: 'Zaandam', originMunicipality: 'Zaanstad', location: 'Tilburg', startDate: '2025-02-12', expectedEndDate: '2026-02-12', currentPhase: 'Voorbereiding uitstroom', supervisor: 'N. Janssen', incidents90d: 1, activeNotes: 0, followUpPlace: 'Definitief akkoord', followUpType: 'Begeleid wonen', followUpProvider: 'Kompas Wonen', plannedOutflow: '2026-08-18' },
-  { id: 'T-002', clientCode: 'WKZ-002', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', location: 'Breda', startDate: '2025-08-04', expectedEndDate: '2026-08-04', currentPhase: 'Onafhankelijkheid', supervisor: 'S. Vermeer', incidents90d: 3, activeNotes: 2, followUpPlace: 'Zoeken', followUpType: 'Beschermd wonen', plannedOutflow: '2026-09-30' },
-  { id: 'T-003', clientCode: 'WKZ-003', originCity: 'Beverwijk', originMunicipality: 'Beverwijk', location: 'Tilburg', startDate: '2025-11-17', expectedEndDate: '2026-11-17', currentPhase: 'Verantwoordelijkheid', supervisor: 'A. de Wit', incidents90d: 0, activeNotes: 0, followUpPlace: 'Niet nodig' },
-  { id: 'T-004', clientCode: 'WKZ-004', originCity: 'Zaandam', originMunicipality: 'Zaanstad', location: 'Eindhoven', startDate: '2024-12-09', expectedEndDate: '2025-12-09', currentPhase: 'Voorbereiding uitstroom', supervisor: 'M. van Dijk', incidents90d: 4, activeNotes: 3, followUpPlace: 'Wachtlijst', followUpType: 'Trainingswoning', plannedOutflow: '2026-08-31' },
-  { id: 'T-005', clientCode: 'WKZ-005', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', location: 'Tilburg', startDate: '2026-01-20', expectedEndDate: '2027-01-20', currentPhase: 'Stabilisatie', supervisor: 'N. Janssen', incidents90d: 2, activeNotes: 1, followUpPlace: 'Nog niet gestart' },
-  { id: 'T-006', clientCode: 'WKZ-006', originCity: 'Haarlem', originMunicipality: 'Overig', location: 'Breda', startDate: '2025-04-14', expectedEndDate: '2026-04-14', currentPhase: 'Voorbereiding uitstroom', supervisor: 'S. Vermeer', incidents90d: 1, activeNotes: 1, followUpPlace: 'Zoeken', followUpType: 'Zelfstandige studio', plannedOutflow: '2026-10-15' },
-  { id: 'T-007', clientCode: 'WKZ-007', originCity: 'Purmerend', originMunicipality: 'Overig', location: 'Eindhoven', startDate: '2026-03-02', expectedEndDate: '2027-03-02', currentPhase: 'Stabilisatie', supervisor: 'R. de Groot', incidents90d: 0, activeNotes: 0, followUpPlace: 'Niet nodig' },
-  { id: 'T-008', clientCode: 'WKZ-008', originCity: 'Zaandam', originMunicipality: 'Zaanstad', location: 'Breda', startDate: '2025-06-23', expectedEndDate: '2026-06-23', currentPhase: 'Onafhankelijkheid', supervisor: 'S. Vermeer', incidents90d: 2, activeNotes: 1, followUpPlace: 'Definitief akkoord', followUpType: 'Kamertraining', followUpProvider: 'Startpunt', plannedOutflow: '2026-08-11' },
-  { id: 'T-009', clientCode: 'WKZ-009', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', location: 'Tilburg', startDate: '2024-10-07', expectedEndDate: '2025-10-07', endDate: '2026-02-13', currentPhase: 'Voorbereiding uitstroom', supervisor: 'A. de Wit', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Begeleid wonen', followUpProvider: 'De Haven', outcome: 'Gepland' },
-  { id: 'T-010', clientCode: 'WKZ-010', originCity: 'Beverwijk', originMunicipality: 'Beverwijk', location: 'Breda', startDate: '2025-01-06', expectedEndDate: '2026-01-06', endDate: '2026-04-24', currentPhase: 'Voorbereiding uitstroom', supervisor: 'S. Vermeer', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Zelfstandige studio', followUpProvider: 'Woonstart', outcome: 'Gepland' },
-  { id: 'T-011', clientCode: 'WKZ-011', originCity: 'Zaandam', originMunicipality: 'Zaanstad', location: 'Tilburg', startDate: '2025-03-03', expectedEndDate: '2026-03-03', endDate: '2026-05-19', currentPhase: 'Onafhankelijkheid', supervisor: 'N. Janssen', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Netwerk/ouders', followUpProvider: 'Eigen netwerk', outcome: 'Gepland' },
-  { id: 'T-012', clientCode: 'WKZ-012', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', location: 'Eindhoven', startDate: '2025-09-15', expectedEndDate: '2026-09-15', endDate: '2026-06-06', currentPhase: 'Verantwoordelijkheid', supervisor: 'M. van Dijk', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Crisisopvang', followUpProvider: 'Crisisopvang Zuid', outcome: 'Ongepland' },
+  { id: 'T-001', clientCode: 'WKZ-001', originCity: 'Zaandam', originMunicipality: 'Zaanstad', responsibleMunicipality: 'Zaanstad', referrer: 'Jeugdteam Zaanstad', referralQuestion: 'Begeleiding naar zelfstandig wonen en een stabiel dagritme.', consentConfirmed: true, location: 'Tilburg', startDate: '2025-02-12', expectedEndDate: '2026-02-12', currentPhase: 'Voorbereiding uitstroom', supervisor: 'N. Janssen', incidents90d: 1, activeNotes: 0, followUpPlace: 'Definitief akkoord', followUpType: 'Begeleid wonen', followUpProvider: 'Kompas Wonen', plannedOutflow: '2026-08-18' },
+  { id: 'T-002', clientCode: 'WKZ-002', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', responsibleMunicipality: 'Amsterdam', referrer: 'Ouder- en Kindteam Amsterdam', referralQuestion: 'Stabiliseren en passende beschermd-wonenplek voorbereiden.', consentConfirmed: true, location: 'Breda', startDate: '2025-08-04', expectedEndDate: '2026-08-04', currentPhase: 'Onafhankelijkheid', supervisor: 'S. Vermeer', incidents90d: 2, activeNotes: 2, followUpPlace: 'Zoeken', followUpType: 'Beschermd wonen', plannedOutflow: '2026-09-30' },
+  { id: 'T-003', clientCode: 'WKZ-003', originCity: 'Beverwijk', originMunicipality: 'Beverwijk', responsibleMunicipality: 'Beverwijk', referrer: 'CJG Beverwijk', referralQuestion: 'Vaardigheden voor zelfstandigheid en netwerkversterking ontwikkelen.', consentConfirmed: true, location: 'Tilburg', startDate: '2025-11-17', expectedEndDate: '2026-11-17', currentPhase: 'Verantwoordelijkheid', supervisor: 'A. de Wit', incidents90d: 0, activeNotes: 0, followUpPlace: 'Niet nodig' },
+  { id: 'T-004', clientCode: 'WKZ-004', originCity: 'Zaandam', originMunicipality: 'Zaanstad', responsibleMunicipality: 'Zaanstad', referrer: 'Jeugdteam Zaanstad', referralQuestion: 'Gedragsstabilisatie en doorstroom naar een trainingswoning.', location: 'Eindhoven', startDate: '2024-12-09', expectedEndDate: '2025-12-09', currentPhase: 'Voorbereiding uitstroom', supervisor: 'M. van Dijk', incidents90d: 3, activeNotes: 3, followUpPlace: 'Wachtlijst', followUpType: 'Trainingswoning', plannedOutflow: '2026-08-31' },
+  { id: 'T-005', clientCode: 'WKZ-005', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', responsibleMunicipality: 'Amsterdam', referrer: 'Ouder- en Kindteam Amsterdam', referralQuestion: 'Veiligheid en dagstructuur herstellen.', consentConfirmed: true, location: 'Tilburg', startDate: '2026-01-20', expectedEndDate: '2027-01-20', currentPhase: 'Stabilisatie', supervisor: 'N. Janssen', incidents90d: 2, activeNotes: 1, followUpPlace: 'Nog niet gestart' },
+  { id: 'T-006', clientCode: 'WKZ-006', originCity: 'Haarlem', originMunicipality: 'Overig', responsibleMunicipality: 'Haarlem', referrer: 'CJG Kennemerland', referralQuestion: 'Voorbereiden op een zelfstandige studio met ambulante ondersteuning.', location: 'Breda', startDate: '2025-04-14', expectedEndDate: '2026-04-14', currentPhase: 'Voorbereiding uitstroom', supervisor: 'S. Vermeer', incidents90d: 1, activeNotes: 1, followUpPlace: 'Zoeken', followUpType: 'Zelfstandige studio', plannedOutflow: '2026-10-15' },
+  { id: 'T-007', clientCode: 'WKZ-007', originCity: 'Purmerend', originMunicipality: 'Overig', responsibleMunicipality: 'Purmerend', referrer: 'Loket Jeugd Purmerend', referralQuestion: 'Stabilisatie en opbouw van dagelijkse zelfredzaamheid.', consentConfirmed: true, location: 'Eindhoven', startDate: '2026-03-02', expectedEndDate: '2027-03-02', currentPhase: 'Stabilisatie', supervisor: 'R. de Groot', incidents90d: 0, activeNotes: 0, followUpPlace: 'Niet nodig' },
+  { id: 'T-008', clientCode: 'WKZ-008', originCity: 'Zaandam', originMunicipality: 'Zaanstad', responsibleMunicipality: 'Zaanstad', referrer: 'Jeugdteam Zaanstad', referralQuestion: 'Doorstroom naar kamertraining met behoud van netwerkondersteuning.', consentConfirmed: true, location: 'Breda', startDate: '2025-06-23', expectedEndDate: '2026-06-23', currentPhase: 'Onafhankelijkheid', supervisor: 'S. Vermeer', incidents90d: 1, activeNotes: 1, followUpPlace: 'Definitief akkoord', followUpType: 'Kamertraining', followUpProvider: 'Startpunt', plannedOutflow: '2026-08-11' },
+  { id: 'T-009', clientCode: 'WKZ-009', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', responsibleMunicipality: 'Amsterdam', referrer: 'Ouder- en Kindteam Amsterdam', referralQuestion: 'Doorstroom naar begeleid wonen.', consentConfirmed: true, location: 'Tilburg', startDate: '2024-10-07', expectedEndDate: '2025-10-07', endDate: '2026-02-13', currentPhase: 'Voorbereiding uitstroom', supervisor: 'A. de Wit', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Begeleid wonen', followUpProvider: 'De Haven', outcome: 'Gepland' },
+  { id: 'T-010', clientCode: 'WKZ-010', originCity: 'Beverwijk', originMunicipality: 'Beverwijk', responsibleMunicipality: 'Beverwijk', referrer: 'CJG Beverwijk', referralQuestion: 'Zelfstandig wonen met passende nazorg.', consentConfirmed: true, location: 'Breda', startDate: '2025-01-06', expectedEndDate: '2026-01-06', endDate: '2026-04-24', currentPhase: 'Voorbereiding uitstroom', supervisor: 'S. Vermeer', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Zelfstandige studio', followUpProvider: 'Woonstart', outcome: 'Gepland' },
+  { id: 'T-011', clientCode: 'WKZ-011', originCity: 'Zaandam', originMunicipality: 'Zaanstad', responsibleMunicipality: 'Zaanstad', referrer: 'Jeugdteam Zaanstad', referralQuestion: 'Terugkeer naar eigen netwerk voorbereiden.', consentConfirmed: true, location: 'Tilburg', startDate: '2025-03-03', expectedEndDate: '2026-03-03', endDate: '2026-05-19', currentPhase: 'Onafhankelijkheid', supervisor: 'N. Janssen', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Netwerk/ouders', followUpProvider: 'Eigen netwerk', outcome: 'Gepland' },
+  { id: 'T-012', clientCode: 'WKZ-012', originCity: 'Amsterdam', originMunicipality: 'Amsterdam', responsibleMunicipality: 'Amsterdam', referrer: 'Ouder- en Kindteam Amsterdam', referralQuestion: 'Crisis stabiliseren en veilige vervolgzorg organiseren.', consentConfirmed: true, location: 'Eindhoven', startDate: '2025-09-15', expectedEndDate: '2026-09-15', endDate: '2026-06-06', currentPhase: 'Verantwoordelijkheid', supervisor: 'M. van Dijk', incidents90d: 0, activeNotes: 0, followUpPlace: 'Geplaatst', followUpType: 'Crisisopvang', followUpProvider: 'Crisisopvang Zuid', outcome: 'Ongepland' },
 ]
 
 export const workItems: WorkItem[] = [
@@ -106,6 +120,9 @@ export const workItems: WorkItem[] = [
   { id: 'A-03', clientCode: 'WKZ-006', title: 'Aanmelding vervolgplek afronden', detail: 'Ontbrekend toestemmingsformulier', due: 'Morgen', urgency: 'Deze week', owner: 'S. Vermeer', type: 'Vervolgplek', responsibleRoles: ['Begeleider', 'Zorgmanager'] },
   { id: 'A-04', clientCode: 'WKZ-008', title: 'Warme overdracht plannen', detail: 'Definitief akkoord van Startpunt ontvangen', due: '31 juli', urgency: 'Deze week', owner: 'N. Janssen', type: 'Vervolgplek', responsibleRoles: ['Begeleider', 'Zorgmanager'] },
   { id: 'A-05', clientCode: 'WKZ-001', title: 'Eindevaluatie voorbereiden', detail: 'Uitstroom staat gepland voor 18 augustus', due: '2 augustus', urgency: 'Deze week', owner: 'N. Janssen', type: 'Evaluatie', responsibleRoles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
+  { id: 'A-06', clientCode: 'WKZ-002', title: 'Besluit gemeente Amsterdam opvragen', detail: 'Reactie op uitbreiding zoekgebied beschermd wonen is vandaag nodig', due: 'Vandaag', dueDate: '2026-07-30', urgency: 'Vandaag', owner: 'M. van Dijk', type: 'Gemeentecontact', sourceNetworkContactId: 'NC-002', responsibleRoles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { id: 'A-07', clientCode: 'WKZ-004', title: 'Inhoudelijke aanvulling verlenging afronden', detail: 'Gemeente Zaanstad wacht op gecontroleerde doelen- en risico-inschatting', due: '1 dag te laat', dueDate: '2026-07-29', urgency: 'Te laat', owner: 'M. van Dijk', type: 'Gemeentecontact', sourceNetworkContactId: 'NC-003', responsibleRoles: ['Gedragswetenschapper', 'Zorgmanager'] },
+  { id: 'A-08', clientCode: 'WKZ-006', title: 'Reactie gemeente Haarlem opvolgen', detail: 'Aanmelding zelfstandige studio wacht op terugkoppeling', due: '3 dagen te laat', dueDate: '2026-07-27', urgency: 'Te laat', owner: 'S. Vermeer', type: 'Gemeentecontact', sourceNetworkContactId: 'NC-004', responsibleRoles: ['Gedragswetenschapper', 'Zorgmanager'] },
 ]
 
 export function workItemVisibleForRole(item: WorkItem, role: WorkspaceRole) {
@@ -115,7 +132,7 @@ export function workItemVisibleForRole(item: WorkItem, role: WorkspaceRole) {
     if (role === 'Begeleider') return storedRoles.some((storedRole) => ['Begeleider', 'Woonbegeleider', 'Ambulant begeleider'].includes(storedRole))
     return storedRoles.includes(role)
   }
-  if (role === 'Gedragswetenschapper') return ['UVO', 'Herstelgesprek'].includes(item.type)
+  if (role === 'Gedragswetenschapper') return ['UVO', 'Herstelgesprek', 'Evaluatie', 'Gemeentecontact'].includes(item.type)
   return role === 'Begeleider'
 }
 
@@ -146,13 +163,22 @@ export const incidents: IncidentRecord[] = [
 ]
 
 export const asOfDate = '28 juli 2026'
+export const incidentWindow90d = { start: '2026-04-29', end: '2026-07-28' }
+
+export function incidentCount90d(clientCode: string) {
+  return incidents.filter((item) =>
+    item.clientCode === clientCode &&
+    item.date >= incidentWindow90d.start &&
+    item.date <= incidentWindow90d.end
+  ).length
+}
 
 export function filterTrajectories(filters: Filters, rows: Trajectory[] = trajectories) {
   return rows.filter((trajectory) => {
     const locationMatches = filters.location === 'Alle locaties' || trajectory.location === filters.location
     const originMatches = filters.origin === 'Alle gemeenten' || trajectory.originMunicipality === filters.origin
     const windowStart = filters.period === '12m' ? '2025-07-28' : `${filters.period}-01-01`
-    const windowEnd = filters.period === '12m' ? '2026-07-28' : `${filters.period}-12-31`
+    const windowEnd = filters.period === '12m' || filters.period === '2026' ? '2026-07-28' : '2025-12-31'
     const periodMatches = trajectory.startDate <= windowEnd && (trajectory.endDate ?? '9999-12-31') >= windowStart
     return locationMatches && originMatches && periodMatches
   })
@@ -193,6 +219,8 @@ export function getDataQualityIssues(rows: Trajectory[]): DataQualityIssue[] {
 
     if (!row.startDate) add('Instroomdatum', 'Nodig voor verblijfsduur en instroomtelling')
     if (!row.originMunicipality) add('Herkomstgemeente', 'Nodig voor gemeentelijke vergelijking')
+    if (!row.responsibleMunicipality) add('Verantwoordelijke gemeente', 'Nodig voor samenwerking, beschikking en contractsturing')
+    if (!row.referrer) add('Verwijzer', 'Nodig om externe afstemming en eigenaarschap te controleren')
     if (!row.location) add('Locatie', 'Nodig voor bezetting en locatievergelijking')
     if (!row.supervisor) add('Trajectbegeleider', 'Nodig voor eigenaarschap en opvolging')
     if (!row.expectedEndDate) add('Verwachte einddatum', 'Nodig voor tijdige uitstroomsturing')
@@ -210,6 +238,8 @@ export function dataCompleteness(rows: Trajectory[]) {
   const requiredChecks = rows.flatMap((row) => [
     Boolean(row.startDate),
     Boolean(row.originMunicipality),
+    Boolean(row.responsibleMunicipality),
+    Boolean(row.referrer),
     Boolean(row.location),
     Boolean(row.supervisor),
     Boolean(row.expectedEndDate),
@@ -221,4 +251,3 @@ export function dataCompleteness(rows: Trajectory[]) {
   if (!requiredChecks.length) return 0
   return Math.round((requiredChecks.filter(Boolean).length / requiredChecks.length) * 100)
 }
-import type { WorkspaceRole } from '../context/RoleContext'

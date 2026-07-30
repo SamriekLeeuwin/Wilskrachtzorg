@@ -34,7 +34,7 @@ const primaryItems: MenuItem[] = [
   { label: 'Jongeren', to: '/jongeren', icon: <PeopleAltRoundedIcon />, roles: careRoles },
   { label: 'Managementrapportage', to: '/rapportages', icon: <RouteRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
   { label: 'Locaties & capaciteit', to: '/locaties', icon: <ApartmentRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
-  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Begeleider', 'Zorgmanager'] },
+  { label: 'Uitstroom & vervolgplek', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'] },
   { label: 'Incidenten & herstel', to: '/gedrag-analyse', icon: <FactCheckRoundedIcon />, roles: ['Gedragswetenschapper', 'Zorgmanager', 'Directie'] },
   { label: 'Databetrouwbaarheid', to: '/kpi-overzicht', icon: <RuleRoundedIcon />, roles: ['Zorgmanager', 'Directie'] },
 ]
@@ -66,6 +66,8 @@ function DashboardLayout() {
   const [online, setOnline] = useState(() => navigator.onLine)
   const meta = location.pathname.endsWith('/uitnodigingen')
     ? { title: 'Uitnodigingen beheren', eyebrow: 'AFSPRAAK & DEELNEMERS' }
+    : location.pathname.endsWith('/netwerkcontact/nieuw')
+    ? { title: 'Gemeentecontact vastleggen', eyebrow: 'SAMENWERKING & VERWIJZING' }
     : location.pathname === '/melden'
     ? { title: 'Melding registreren', eyebrow: 'MELDING & OPVOLGING' }
     : location.pathname === '/uitstroom-registratie/bijwerken'

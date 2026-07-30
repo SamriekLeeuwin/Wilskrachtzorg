@@ -8,7 +8,7 @@ import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedI
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { WorkItem } from '../data/careInsights'
-import { workItems } from '../data/careInsights'
+import { workItems, workItemVisibleForRole } from '../data/careInsights'
 import { loadTrajectories, loadWorkQueue, saveWorkQueue } from '../data/demoStore'
 import { useWorkspaceRole, type WorkspaceRole } from '../context/RoleContext'
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
@@ -73,7 +73,17 @@ const templates: TaskTemplate[] = [
     policyReason: 'Medewerkershandboek: het zorgplan wordt bijgehouden en de zorg wordt periodiek geëvalueerd.',
     expectedResult: 'De voortgang, doelen, besluiten en nieuwe afspraken zijn samen beoordeeld en vastgelegd.',
     checklist: ['Voortgang doelen controleren', 'Jongere betrekken', 'Netwerk of verwijzer uitnodigen', 'Nieuwe afspraken vastleggen'],
-    roles: ['Begeleider', 'Zorgmanager'],
+    roles: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+  },
+  {
+    type: 'Gemeentecontact',
+    label: 'Gemeentecontact',
+    description: 'Reactie, aanvulling of extern besluit opvolgen.',
+    title: 'Reactie gemeente of verwijzer opvolgen',
+    policyReason: 'Externe afspraak: reactie, eigenaar en deadline moeten controleerbaar worden opgevolgd.',
+    expectedResult: 'Het contactmoment, de reactie of het besluit en de eventuele vervolgstap zijn in het dossier vastgelegd.',
+    checklist: ['Actuele contactpersoon controleren', 'Feiten en vraag voorbereiden', 'Grondslag en gedeelde inhoud controleren', 'Reactie en vervolg vastleggen'],
+    roles: ['Gedragswetenschapper', 'Zorgmanager'],
   },
 ]
 
@@ -82,6 +92,7 @@ const responsibleRolesByType: Record<TaskType, WorkspaceRole[]> = {
   Herstelgesprek: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
   Vervolgplek: ['Begeleider', 'Zorgmanager'],
   Evaluatie: ['Begeleider', 'Gedragswetenschapper', 'Zorgmanager'],
+  Gemeentecontact: ['Gedragswetenschapper', 'Zorgmanager'],
 }
 
 const addDays = (days: number) => {
@@ -98,6 +109,8 @@ function NieuweTaakPage() {
   const trajectories = useMemo(() => loadTrajectories().filter((item) => !item.endDate), [])
   const availableTemplates = templates.filter((template) => template.roles.includes(role))
   const requestedType = searchParams.get('type') as TaskType | null
+  const returnTo = searchParams.get('returnTo')
+  const safeReturnTo = returnTo?.startsWith('/jongeren/') ? returnTo : '/acties'
   const firstTemplate = availableTemplates.find((item) => item.type === requestedType) ?? availableTemplates[0]
   const defaultTasks = useMemo(() => workItems.map((item) => ({
     ...item,
@@ -111,7 +124,9 @@ function NieuweTaakPage() {
     ...defaultTasks.find((defaultTask) => defaultTask.id === item.id),
     ...item,
   })), [defaultTasks])
-  const existingTask = storedTasks.find((item) => item.id === taskId)
+  const foundTask = storedTasks.find((item) => item.id === taskId)
+  const existingTask = foundTask && workItemVisibleForRole(foundTask, role) ? foundTask : undefined
+  const forbiddenTask = Boolean(taskId && foundTask && !existingTask)
   const existingTemplate = availableTemplates.find((item) => item.type === existingTask?.type) ?? firstTemplate
   const [selectedType, setSelectedType] = useState<TaskType>(existingTask?.type ?? firstTemplate.type)
   const [clientCode, setClientCode] = useState(existingTask?.clientCode ?? searchParams.get('client') ?? '')
@@ -189,14 +204,19 @@ function NieuweTaakPage() {
       createdByRole: existingTask?.createdByRole ?? role,
     }
     saveWorkQueue(existingTask ? current.map((item) => item.id === existingTask.id ? task : item) : [task, ...current])
+    if (safeReturnTo.startsWith('/jongeren/')) {
+      const separator = safeReturnTo.includes('?') ? '&' : '?'
+      navigate(`${safeReturnTo}${separator}task=${existingTask ? 'updated' : 'created'}`)
+      return
+    }
     navigate(`/acties?${existingTask ? 'updated' : 'created'}=1`)
   }
 
   if (taskId && !existingTask) {
     return (
       <Stack spacing={2} sx={{ maxWidth: 720, mx: 'auto', py: { xs: 2, md: 5 } }}>
-        <Alert severity="error">Deze taak kon niet worden gevonden. Er is geen nieuwe taak aangemaakt en niets gewijzigd.</Alert>
-        <Button component={RouterLink} to="/acties" startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>Terug naar werkvoorraad</Button>
+        <Alert severity="error">{forbiddenTask ? 'U hebt binnen deze rol geen recht om deze taak te wijzigen.' : 'Deze taak kon niet worden gevonden.'} Er is geen nieuwe taak aangemaakt en niets gewijzigd.</Alert>
+        <Button component={RouterLink} to={safeReturnTo} startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start' }}>{safeReturnTo === '/acties' ? 'Terug naar werkvoorraad' : 'Terug naar dossier'}</Button>
       </Stack>
     )
   }
@@ -204,8 +224,8 @@ function NieuweTaakPage() {
   return (
     <Stack spacing={2.5}>
       <Box>
-        <Button component={RouterLink} to="/acties" startIcon={<ArrowBackRoundedIcon />} sx={{ mb: 1, px: 0 }}>
-          Terug naar werkvoorraad
+        <Button component={RouterLink} to={safeReturnTo} startIcon={<ArrowBackRoundedIcon />} sx={{ mb: 1, px: 0 }}>
+          {safeReturnTo === '/acties' ? 'Terug naar werkvoorraad' : 'Terug naar dossier'}
         </Button>
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>{existingTask ? 'Taak wijzigen' : 'Nieuwe taak toevoegen'}</Typography>
         <Typography sx={{ mt: .5, maxWidth: 760, fontSize: 11.5, lineHeight: 1.6, color: '#718395' }}>
@@ -227,6 +247,7 @@ function NieuweTaakPage() {
                 return (
                   <Button
                     key={template.type}
+                    disabled={Boolean(existingTask)}
                     onClick={() => selectTemplate(template)}
                     variant="outlined"
                     sx={{
@@ -313,7 +334,7 @@ function NieuweTaakPage() {
             <Button fullWidth variant="contained" size="large" startIcon={<AssignmentTurnedInRoundedIcon />} onClick={saveTask}>
               {existingTask ? 'Wijzigingen opslaan' : 'Taak opslaan'}
             </Button>
-            <Button fullWidth component={RouterLink} to="/acties">Annuleren</Button>
+            <Button fullWidth component={RouterLink} to={safeReturnTo}>Annuleren</Button>
           </Stack>
           <Typography sx={{ mt: 1.4, fontSize: 9.7, lineHeight: 1.5, color: '#8a98a5' }}>De taak verschijnt in de rolwerkvoorraad met de gekozen taakverantwoordelijke.</Typography>
         </Box>

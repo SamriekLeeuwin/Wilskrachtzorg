@@ -22,6 +22,7 @@ const policyReasons: Record<WorkItem['type'], string> = {
   Herstelgesprek: 'Pedagogisch beleid: na ieder incident wordt herstelopvolging beoordeeld en aantoonbaar vastgelegd.',
   Vervolgplek: 'Doorstroom: besluit, deelnemers, actiehouder en deadline moeten controleerbaar zijn vastgelegd.',
   Evaluatie: 'Medewerkershandboek: zorgplan bijhouden en zorg periodiek evalueren.',
+  Gemeentecontact: 'Externe afspraak: reactie, eigenaar en deadline moeten controleerbaar worden opgevolgd.',
 }
 
 const urgencyTone = {
@@ -39,7 +40,12 @@ function WerkvoorraadPage() {
     ...item,
   }))
   const [actions, setActions] = useState<ActionRow[]>(loadCurrentActions)
-  const [typeFilter, setTypeFilter] = useState('Alle typen')
+  const requestedType = searchParams.get('type')
+  const [typeFilter, setTypeFilter] = useState(
+    ['UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie', 'Gemeentecontact'].includes(requestedType ?? '')
+      ? requestedType!
+      : 'Alle typen',
+  )
   const [ownerFilter, setOwnerFilter] = useState('Alle verantwoordelijken')
   const [selected, setSelected] = useState<ActionRow | null>(null)
   const [completionNote, setCompletionNote] = useState('')
@@ -112,7 +118,7 @@ function WerkvoorraadPage() {
           </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <Button component={RouterLink} to="/acties/nieuw" variant="contained" startIcon={<AddRoundedIcon />}>Nieuwe taak</Button>
-            <FormControl size="small" sx={{ minWidth: 155 }}><Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} inputProps={{ 'aria-label': 'Actietype' }}>{['Alle typen', 'UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
+            <FormControl size="small" sx={{ minWidth: 155 }}><Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} inputProps={{ 'aria-label': 'Actietype' }}>{['Alle typen', 'UVO', 'Herstelgesprek', 'Vervolgplek', 'Evaluatie', 'Gemeentecontact'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
             <FormControl size="small" sx={{ minWidth: 180 }}><Select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)} inputProps={{ 'aria-label': 'Taakverantwoordelijke' }}>{['Alle verantwoordelijken', ...Array.from(new Set(actions.map((item) => item.owner)))].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</Select></FormControl>
           </Stack>
         </Stack>
@@ -139,6 +145,7 @@ function WerkvoorraadPage() {
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
                     {['UVO', 'Herstelgesprek', 'Evaluatie'].includes(item.type) && <Button component={RouterLink} to={`/jongeren/${item.clientCode}/afspraak/nieuw?type=${item.type}&task=${item.id}`} size="small" variant="outlined" startIcon={<CalendarMonthRoundedIcon />} sx={{ fontSize: 10.5 }}>Inplannen</Button>}
+                    {item.type === 'Gemeentecontact' && <Button component={RouterLink} to={`/jongeren/${item.clientCode}/netwerkcontact/nieuw?task=${item.id}`} size="small" variant="contained" sx={{ fontSize: 10.5 }}>Contact vastleggen</Button>}
                     <Button component={RouterLink} to={`/acties/${item.id}/bewerken`} size="small" variant="outlined" startIcon={<EditRoundedIcon />} sx={{ fontSize: 10.5 }}>Wijzigen</Button>
                     {item.type === 'Vervolgplek' && <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} sx={{ fontSize: 10.5 }}>Taak afronden</Button>}
                   </Stack>

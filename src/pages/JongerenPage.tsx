@@ -7,7 +7,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
-import { monthsBetween, type Trajectory } from '../data/careInsights'
+import { incidentCount90d, monthsBetween, type Trajectory } from '../data/careInsights'
 import { loadTrajectories } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
 
@@ -34,7 +34,7 @@ function JongerenPage() {
 
   return (
     <Stack spacing={2.5}>
-      {requestedAction && <Alert severity="info">Kies de jongere waarvoor u {requestedAction === 'afspraak' ? 'een afspraak wilt plannen of iemand wilt uitnodigen' : 'dossiergegevens wilt wijzigen'}.</Alert>}
+      {requestedAction && <Alert severity="info">Kies de jongere waarvoor u {requestedAction === 'afspraak' ? 'een afspraak wilt plannen of iemand wilt uitnodigen' : requestedAction === 'netwerkcontact' ? 'contact met gemeente of verwijzer wilt vastleggen' : 'dossiergegevens wilt wijzigen'}.</Alert>}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5}>
         <Box>
           <Typography sx={{ fontSize: 13.5, fontWeight: 720, color: '#314b61' }}>{filtered.length} trajecten zichtbaar</Typography>
@@ -85,8 +85,8 @@ function JongerenPage() {
                   key={row.id}
                   hover
                   tabIndex={0}
-                  onClick={() => navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`)}
-                  onKeyDown={(event) => { if (event.key === 'Enter') navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`) }}
+                  onClick={() => navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : requestedAction === 'netwerkcontact' ? `/jongeren/${row.clientCode}/netwerkcontact/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`)}
+                  onKeyDown={(event) => { if (event.key === 'Enter') navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : requestedAction === 'netwerkcontact' ? `/jongeren/${row.clientCode}/netwerkcontact/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`) }}
                   sx={{ cursor: 'pointer', '&:focus-visible': { outline: '2px solid #2f76ae', outlineOffset: -2 } }}
                 >
                   <TableCell>
@@ -101,7 +101,7 @@ function JongerenPage() {
                   <TableCell>{row.originCity}<Typography sx={{ fontSize: 9.5, color: '#93a0ac' }}>{row.originMunicipality}</Typography></TableCell>
                   <TableCell>{row.location}</TableCell>
                   <TableCell>{row.supervisor}</TableCell>
-                  {showClinicalColumns && <TableCell><Chip label={row.incidents90d} size="small" sx={{ height: 21, bgcolor: row.incidents90d > 0 ? '#fff3e7' : '#eaf6f1', color: row.incidents90d > 0 ? '#965b20' : '#28745d', fontSize: 9.5 }} /></TableCell>}
+                  {showClinicalColumns && <TableCell><Chip label={incidentCount90d(row.clientCode)} size="small" sx={{ height: 21, bgcolor: incidentCount90d(row.clientCode) > 0 ? '#fff3e7' : '#eaf6f1', color: incidentCount90d(row.clientCode) > 0 ? '#965b20' : '#28745d', fontSize: 9.5 }} /></TableCell>}
                   <TableCell>{monthsBetween(row.startDate, row.endDate ?? '2026-07-28').toLocaleString('nl-NL', { maximumFractionDigits: 1 })} mnd</TableCell>
                   <TableCell><Chip label={row.followUpPlace} size="small" sx={{ height: 21, bgcolor: ['Definitief akkoord', 'Geplaatst'].includes(row.followUpPlace) ? '#eaf6f1' : '#f5f2ed', color: ['Definitief akkoord', 'Geplaatst'].includes(row.followUpPlace) ? '#28745d' : '#7b6955', fontSize: 9.5 }} /></TableCell>
                   <TableCell><ArrowForwardRoundedIcon sx={{ fontSize: 17, color: '#91a1af' }} /></TableCell>

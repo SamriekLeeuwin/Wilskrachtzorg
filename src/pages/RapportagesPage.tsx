@@ -9,10 +9,12 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
 import {
-  dataCompleteness, formatMonths, getDataQualityIssues, median, monthsBetween, type Filters,
+  formatMonths, median, monthsBetween, type Filters,
 } from '../data/careInsights'
-import { loadTrajectories } from '../data/demoStore'
+import { loadNetworkContacts, loadTrajectories } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
+import { contactNeedsAttention } from '../data/networkContacts'
+import { buildReportingSnapshot } from '../data/reporting'
 
 function RapportagesPage() {
   const navigate = useNavigate()
@@ -20,28 +22,14 @@ function RapportagesPage() {
   const canOpenDossiers = role === 'Zorgmanager'
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const allTrajectories = useMemo(() => loadTrajectories(), [])
-  const period = filters.period === '12m'
-    ? { start: '2025-07-28', end: '2026-07-28', label: 'de laatste 12 maanden' }
-    : filters.period === '2026'
-      ? { start: '2026-01-01', end: '2026-07-28', label: '2026 tot en met de peildatum' }
-      : { start: '2025-01-01', end: '2025-12-31', label: 'kalenderjaar 2025' }
-  const scoped = useMemo(() => allTrajectories.filter((item) =>
-    (filters.location === 'Alle locaties' || item.location === filters.location) &&
-    (filters.origin === 'Alle gemeenten' || item.originMunicipality === filters.origin)
-  ), [allTrajectories, filters.location, filters.origin])
-  const filtered = useMemo(() => scoped.filter((item) =>
-    item.startDate <= period.end && (item.endDate ?? '9999-12-31') >= period.start
-  ), [period.end, period.start, scoped])
-  const exitsInPeriod = useMemo(() => scoped.filter((item) =>
-    Boolean(item.endDate && item.endDate >= period.start && item.endDate <= period.end)
-  ), [period.end, period.start, scoped])
-  const activeAtPeriodEnd = useMemo(() => scoped.filter((item) =>
-    item.startDate <= period.end && (!item.endDate || item.endDate > period.end)
-  ), [period.end, scoped])
-  const placementSnapshotAvailable = period.end === '2026-07-28'
-  const completeness = dataCompleteness(filtered)
-  const qualityIssues = getDataQualityIssues(filtered)
-  const blockingIssues = qualityIssues.filter((issue) => issue.severity === 'Blokkerend').length
+  const reporting = useMemo(() => buildReportingSnapshot(filters, allTrajectories), [allTrajectories, filters])
+  const period = reporting.window
+  const filtered = reporting.trajectoriesInPeriod
+  const exitsInPeriod = reporting.exitsInPeriod
+  const activeAtPeriodEnd = reporting.activeAtPeriodEnd
+  const placementSnapshotAvailable = reporting.placementSnapshotAvailable
+  const completeness = reporting.completeness
+  const trajectoryBlockingIssues = reporting.blockingIssues.length
 
   const originRows = useMemo(() => {
     const origins = ['Zaanstad', 'Amsterdam', 'Beverwijk', 'Overig'] as const
@@ -50,7 +38,7 @@ function RapportagesPage() {
       const closed = rows.filter((item) => item.endDate && item.endDate >= period.start && item.endDate <= period.end)
       const closedDurations = closed.map((item) => monthsBetween(item.startDate, item.endDate!))
       const active = rows.filter((item) => item.startDate <= period.end && (!item.endDate || item.endDate > period.end))
-      const placementsNeeded = rows.filter((item) => item.followUpPlace !== 'Niet nodig')
+      const placementsNeeded = active.filter((item) => item.followUpPlace !== 'Niet nodig')
       const placementArranged = placementsNeeded.filter((item) => ['Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
       return {
         origin,
@@ -68,10 +56,43 @@ function RapportagesPage() {
     }).filter((row) => row.total > 0)
   }, [filtered, period.end, period.start, placementSnapshotAvailable])
 
-  const closedDurations = exitsInPeriod.map((item) => monthsBetween(item.startDate, item.endDate!))
+  const closedDurations = reporting.closedDurations
   const active = activeAtPeriodEnd
-  const placementNeeded = placementSnapshotAvailable ? activeAtPeriodEnd.filter((item) => item.followUpPlace !== 'Niet nodig') : []
-  const placementArranged = placementNeeded.filter((item) => ['Definitief akkoord', 'Geplaatst'].includes(item.followUpPlace))
+  const placementNeeded = reporting.placementNeeded
+  const placementArranged = reporting.placementArranged
+  const plannedExitRate = exitsInPeriod.length ? Math.round((reporting.plannedExits.length / exitsInPeriod.length) * 100) : null
+  const allContacts = useMemo(() => loadNetworkContacts(), [])
+  const activeClientCodes = new Set(activeAtPeriodEnd.map((item) => item.clientCode))
+  const currentContacts = placementSnapshotAvailable
+    ? allContacts.filter((item) => activeClientCodes.has(item.clientCode))
+    : []
+  const contactAttention = currentContacts.filter((item) => contactNeedsAttention(item, period.end))
+  const invalidContactRecords = currentContacts.filter((item) =>
+    !item.organisation ||
+    !item.contactPerson ||
+    !item.contactRole ||
+    !item.owner ||
+    !item.sharingBasis ||
+    !item.sharedDataScope ||
+    (!['Besluit ontvangen', 'Afgerond'].includes(item.status) && (!item.nextAction || !item.dueDate))
+  )
+  const sourceBlockingIssues =
+    (reporting.incidentReconciliation.available && !reporting.incidentReconciliation.matches ? 1 : 0) +
+    (invalidContactRecords.length ? 1 : 0)
+  const blockingIssues = trajectoryBlockingIssues + sourceBlockingIssues
+  const coordinationRows = Array.from(new Set(activeAtPeriodEnd.map((item) => item.responsibleMunicipality ?? item.originMunicipality))).map((municipality) => {
+    const clients = activeAtPeriodEnd.filter((item) => (item.responsibleMunicipality ?? item.originMunicipality) === municipality)
+    const codes = new Set(clients.map((item) => item.clientCode))
+    const contacts = currentContacts.filter((item) => codes.has(item.clientCode))
+    const attention = contacts.filter((item) => contactNeedsAttention(item, period.end))
+    return {
+      municipality,
+      clients: clients.length,
+      attention: new Set(attention.map((item) => item.clientCode)).size,
+      overdue: new Set(attention.filter((item) => item.dueDate && item.dueDate < period.end).map((item) => item.clientCode)).size,
+      decisions: new Set(contacts.filter((item) => item.status === 'Besluit ontvangen').map((item) => item.clientCode)).size,
+    }
+  }).sort((a, b) => b.attention - a.attention || b.clients - a.clients)
 
   const durationBands = [
     { label: '< 6 mnd', value: exitsInPeriod.filter((item) => monthsBetween(item.startDate, item.endDate!) < 6).length },
@@ -107,17 +128,62 @@ function RapportagesPage() {
         </Stack>
       </Box>
 
-      <InsightFilters value={filters} onChange={setFilters} />
+      <InsightFilters value={filters} onChange={setFilters} periodOnly={role === 'Directie'} />
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 1.7 }}>
-        <KpiCard label="Trajecten in periode" value={String(filtered.length)} context={`${active.length} actief aan periode-einde · ${exitsInPeriod.length} uitgestroomd in periode`} icon={<RouteRoundedIcon />} />
-        <KpiCard label="Mediane verblijfsduur bij uitstroom" value={closedDurations.length ? formatMonths(median(closedDurations)) : '–'} context={`Gebaseerd op ${closedDurations.length} uitstroomtrajecten in de periode`} icon={<AccessTimeRoundedIcon />} tone="green" />
-        <KpiCard label="Langer dan 12 maanden" value={String(originRows.reduce((sum, row) => sum + row.longStay, 0))} context="Gemeten tot uitstroom of einde geselecteerde periode" icon={<QueryStatsRoundedIcon />} tone="amber" />
-        <KpiCard label="Vervolgplek geregeld" value={placementSnapshotAvailable ? `${placementNeeded.length ? Math.round((placementArranged.length / placementNeeded.length) * 100) : 0}%` : '–'} context={placementSnapshotAvailable ? `${placementArranged.length} van ${placementNeeded.length} actieve trajecten waarbij een plek nodig is` : 'Historische vervolgplekstatus is niet beschikbaar in de prototypebron'} icon={<HomeWorkRoundedIcon />} tone="blue" />
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' }, gap: 1.7 }}>
+        {role === 'Directie' ? (
+          <>
+            <KpiCard label="Actief op periode-einde" value={String(active.length)} context={`${filtered.length} trajecten raakten de periode · vorige gelijke periode: ${reporting.previous.activeAtPeriodEnd.length}`} benchmark="organisatiecapaciteit: 30" icon={<RouteRoundedIcon />} />
+            <KpiCard label="Geplande uitstroom" value={plannedExitRate === null ? '–' : `${plannedExitRate}%`} context={`${plannedExitRate === null ? 'Geen uitstroom; niet van toepassing' : `${reporting.plannedExits.length} van ${exitsInPeriod.length}`} · vorige: ${reporting.previous.plannedExitRate === null ? 'n.v.t.' : `${reporting.previous.plannedExitRate}%`}`} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={plannedExitRate === null ? 'blue' : plannedExitRate >= 80 ? 'green' : 'red'} />
+            <KpiCard label="Mediane verblijfsduur" value={reporting.medianDuration === null ? '–' : formatMonths(reporting.medianDuration)} context={`${reporting.medianDuration === null ? 'Geen uitstroom in deze periode' : `${closedDurations.length} uitstroomtrajecten`} · vorige: ${reporting.previous.medianDuration === null ? 'n.v.t.' : formatMonths(reporting.previous.medianDuration)}`} benchmark="conceptdoel ≤ 12 mnd" icon={<AccessTimeRoundedIcon />} tone={reporting.medianDuration === null ? 'blue' : reporting.medianDuration <= 12 ? 'green' : 'red'} />
+          </>
+        ) : (
+          <>
+            <KpiCard label="Boven verwachte einddatum" value={String(reporting.overdueAtPeriodEnd.length)} context={`${active.length} actieve trajecten aan periode-einde`} benchmark="conceptdoel: 0" icon={<QueryStatsRoundedIcon />} tone={reporting.overdueAtPeriodEnd.length ? 'red' : 'green'} />
+            <KpiCard label="Vervolgplek geregeld" value={placementSnapshotAvailable ? (placementNeeded.length ? `${Math.round((placementArranged.length / placementNeeded.length) * 100)}%` : 'n.v.t.') : '–'} context={placementSnapshotAvailable ? `${placementArranged.length} van ${placementNeeded.length} actieve trajecten waarvoor een plek nodig is` : 'Historische vervolgplekstatus is niet beschikbaar'} benchmark="conceptdoel ≥ 80%" icon={<HomeWorkRoundedIcon />} tone={placementNeeded.length && placementArranged.length / placementNeeded.length >= .8 ? 'green' : 'amber'} />
+            <KpiCard label="Blokkerende datacontroles" value={String(blockingIssues)} context={`${completeness}% compleet · ${filtered.length} trajecten gecontroleerd`} benchmark="vrijgave: 0 blokkades" icon={<QueryStatsRoundedIcon />} tone={blockingIssues ? 'red' : completeness >= 95 ? 'green' : 'amber'} />
+          </>
+        )}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: '1fr 1fr' }, gap: 2 }}>
-        <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
+      <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+        <Box sx={{ px: 2.5, py: 2 }}>
+          <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Samenwerking met verantwoordelijke gemeenten</Typography>
+          <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>
+            {placementSnapshotAvailable ? 'Actuele dossiers met open reactie, aanvulling of besluitdeadline' : 'Contactstatus is alleen als actuele snapshot beschikbaar; niet als historische reeks'}
+          </Typography>
+        </Box>
+        <TableContainer>
+          {role === 'Zorgmanager' ? (
+            <Table size="small" sx={{ minWidth: 680 }}>
+              <TableHead><TableRow>{['Verantwoordelijke gemeente', 'Actieve dossiers', 'Opvolging nodig', 'Deadline verstreken', 'Besluit ontvangen'].map((header) => <TableCell key={header}>{header}</TableCell>)}</TableRow></TableHead>
+              <TableBody>
+                {placementSnapshotAvailable ? coordinationRows.map((row) => (
+                  <TableRow key={row.municipality}>
+                    <TableCell sx={{ fontWeight: 700 }}>{row.municipality}</TableCell>
+                    <TableCell>{row.clients}</TableCell>
+                    <TableCell>{row.attention}</TableCell>
+                    <TableCell><Chip label={row.overdue} size="small" sx={{ height: 21, bgcolor: row.overdue ? '#fcecea' : '#eaf6f1', color: row.overdue ? '#a44539' : '#24745d', fontSize: 10 }} /></TableCell>
+                    <TableCell>{row.decisions}</TableCell>
+                  </TableRow>
+                )) : <TableRow><TableCell colSpan={5} sx={{ py: 4, textAlign: 'center', color: '#718395' }}>Geen historische gemeentelijke contactstatus beschikbaar.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          ) : (
+            <Table size="small" sx={{ minWidth: 620 }}>
+              <TableHead><TableRow>{['Bestuurlijke indicator', 'Waarde', 'Duiding'].map((header) => <TableCell key={header}>{header}</TableCell>)}</TableRow></TableHead>
+              <TableBody>
+                <TableRow><TableCell sx={{ fontWeight: 700 }}>Externe opvolging nodig</TableCell><TableCell>{placementSnapshotAvailable ? new Set(contactAttention.map((item) => item.clientCode)).size : '–'}</TableCell><TableCell>Unieke actieve dossiers met reactie, aanvulling of deadline</TableCell></TableRow>
+                <TableRow><TableCell sx={{ fontWeight: 700 }}>Deadline verstreken</TableCell><TableCell>{placementSnapshotAvailable ? new Set(contactAttention.filter((item) => item.dueDate && item.dueDate < period.end).map((item) => item.clientCode)).size : '–'}</TableCell><TableCell>Vraagt operationele opvolging door gedragswetenschapper of zorgmanager</TableCell></TableRow>
+                <TableRow><TableCell sx={{ fontWeight: 700 }}>Dataconfidence</TableCell><TableCell>{completeness}%</TableCell><TableCell>{blockingIssues ? `${blockingIssues} blokkades in traject-, incident- of contactbron; niet vrijgeven` : 'Bronreconciliatie akkoord; formele bronvalidatie blijft nodig'}</TableCell></TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </TableContainer>
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', xl: role === 'Directie' ? '1fr' : '1fr 1fr' }, gap: 2 }}>
+        {role === 'Zorgmanager' && <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Verblijfsduur per herkomstgemeente</Typography>
           <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Mediaan en gemiddelde van trajecten met uitstroom in de geselecteerde periode</Typography>
           <Box sx={{ height: 270, mt: 2 }}>
@@ -132,7 +198,7 @@ function RapportagesPage() {
               </BarChart>
             </ResponsiveContainer> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}><Typography sx={{ fontSize: 11, color: '#7c8d9b' }}>Geen uitstroomtrajecten in deze selectie.</Typography></Box>}
           </Box>
-        </Box>
+        </Box>}
 
         <Box sx={{ p: 2.5, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Verdeling verblijfsduur</Typography>
@@ -151,7 +217,7 @@ function RapportagesPage() {
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
+      {role === 'Zorgmanager' ? <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, overflow: 'hidden' }}>
         <Box sx={{ px: 2.5, py: 2 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Vergelijking per herkomstgemeente</Typography>
           <Typography sx={{ fontSize: 10.8, color: '#8492a2', mt: .3 }}>Toon altijd aantallen naast percentages om kleine groepen herkenbaar te maken</Typography>
@@ -186,7 +252,11 @@ function RapportagesPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Box>
+      </Box> : (
+        <Alert severity="info">
+          Gemeentevergelijkingen met minder dan vijf trajecten per groep zijn in de directieweergave onderdrukt. De zorgmanager kan de operationele vergelijking bekijken; Directie ziet alleen organisatietotalen.
+        </Alert>
+      )}
 
       <Typography sx={{ fontSize: 10.5, color: '#8a98a6' }}>
         Bron: fictieve Zilliz-demodata · Peildatum 28 juli 2026 · Verblijfsduur afgesloten trajecten = uitstroomdatum minus instroomdatum.

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography,
+  Alert, Box, Button, Checkbox, Divider, FormControlLabel, MenuItem, Stack, TextField, Typography,
 } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
@@ -16,8 +16,8 @@ import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 export default function VervolgplekBijwerkenPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const trajectories = useMemo(() => loadTrajectories().filter((item) => !item.endDate), [])
   const requestedCode = searchParams.get('client')
+  const trajectories = useMemo(() => loadTrajectories().filter((item) => !item.endDate || item.clientCode === requestedCode), [requestedCode])
   const initialCode = requestedCode ?? trajectories[0]?.clientCode ?? ''
   const initialTrajectory = trajectories.find((item) => item.clientCode === initialCode)
   const [values, setValues] = useState({
@@ -35,12 +35,14 @@ export default function VervolgplekBijwerkenPage() {
     nextAction: '',
     owner: initialTrajectory?.supervisor ?? '',
     dueDate: '',
-    actualOutflowDate: '',
-    outcome: '' as '' | 'Gepland' | 'Ongepland',
+    actualOutflowDate: initialTrajectory?.endDate ?? '',
+    outcome: initialTrajectory?.outcome ?? '' as '' | 'Gepland' | 'Ongepland',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [closureConfirmed, setClosureConfirmed] = useState(false)
   const requiresProvider = ['Definitief akkoord', 'Geplaatst'].includes(values.status)
   const isPlaced = values.status === 'Geplaatst'
+  const today = new Date().toISOString().slice(0, 10)
   const formDirty = Boolean(
     values.decision.trim() || values.decisionBy.trim() || values.evidenceReference.trim() ||
     values.nextAction.trim() || values.dueDate || values.actualOutflowDate || values.outcome ||
@@ -55,8 +57,9 @@ export default function VervolgplekBijwerkenPage() {
     values.subject.trim() && values.participants.trim() && values.decision.trim() &&
     values.decisionBy.trim() && values.evidenceReference.trim() &&
     values.nextAction.trim() && values.owner && values.dueDate &&
+    values.date <= today && values.dueDate >= values.date &&
     (!requiresProvider || (values.followUpType.trim() && values.provider.trim())) &&
-    (!isPlaced || (values.actualOutflowDate && values.outcome))
+    (!isPlaced || (values.actualOutflowDate && values.actualOutflowDate <= today && values.outcome && closureConfirmed))
   )
 
   const selectClient = (clientCode: string) => {
@@ -70,7 +73,10 @@ export default function VervolgplekBijwerkenPage() {
       provider: row.followUpProvider ?? '',
       plannedOutflow: row.plannedOutflow ?? '',
       owner: row.supervisor,
+      actualOutflowDate: row.endDate ?? '',
+      outcome: row.outcome ?? '',
     })
+    setClosureConfirmed(false)
   }
 
   const save = () => {
@@ -83,7 +89,8 @@ export default function VervolgplekBijwerkenPage() {
       followUpType: values.followUpType.trim() || undefined,
       followUpProvider: values.provider.trim() || undefined,
       plannedOutflow: values.plannedOutflow,
-      ...(isPlaced ? { endDate: values.actualOutflowDate, outcome: values.outcome as NonNullable<Trajectory['outcome']> } : {}),
+      endDate: isPlaced ? values.actualOutflowDate : undefined,
+      outcome: isPlaced ? values.outcome as NonNullable<Trajectory['outcome']> : undefined,
     } : item))
 
     const conversations = loadPlacementConversations()
@@ -143,7 +150,8 @@ export default function VervolgplekBijwerkenPage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Vervolgplek en besluit bijwerken</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>Eén invoer werkt de monitor, het dossier en de werkvoorraad samen bij.</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Vul status, datum, besluitnemer, bewijs, vervolgtaak, taakverantwoordelijke en deadline volledig in. Definitief akkoord of plaatsing vereist ook een type en aanbieder.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Vul status, geldige datums, besluitnemer, bewijs, vervolgtaak, taakverantwoordelijke en deadline volledig in. Een plaatsing vereist een type, aanbieder, uitstroomdatum van vandaag of eerder en expliciete afsluitbevestiging.</Alert>}
+      {initialTrajectory?.endDate && !isPlaced && <Alert severity="warning">U heropent hiermee een afgesloten traject. De eerdere uitstroomdatum en uitkomst worden verwijderd; leg reden en bewijs volledig vast.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
         <Stack spacing={2.5}>
@@ -153,7 +161,7 @@ export default function VervolgplekBijwerkenPage() {
               <TextField select label="Jongere / dossier" value={values.clientCode} onChange={(event) => selectClient(event.target.value)}>
                 {trajectories.map((item) => <MenuItem key={item.id} value={item.clientCode}>{item.clientCode} · {item.location} · {item.supervisor}</MenuItem>)}
               </TextField>
-              <TextField select label="Status vervolgplek" value={values.status} onChange={(event) => setValues({ ...values, status: event.target.value as Trajectory['followUpPlace'] })}>
+              <TextField select label="Status vervolgplek" value={values.status} onChange={(event) => { setValues({ ...values, status: event.target.value as Trajectory['followUpPlace'] }); setClosureConfirmed(false) }}>
                 {['Niet nodig', 'Nog niet gestart', 'Zoeken', 'Wachtlijst', 'Definitief akkoord', 'Geplaatst'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
               <TextField label="Type vervolgplek" value={values.followUpType} onChange={(event) => setValues({ ...values, followUpType: event.target.value })} />
@@ -202,6 +210,7 @@ export default function VervolgplekBijwerkenPage() {
             <Typography sx={{ fontSize: 10.8 }}>Taakverantwoordelijke: {values.owner || '—'}</Typography>
           </Stack>
           <Divider sx={{ my: 1.7 }} />
+          {isPlaced && <FormControlLabel control={<Checkbox checked={closureConfirmed} onChange={(event) => setClosureConfirmed(event.target.checked)} />} label="Ik bevestig dat dit traject met deze werkelijke uitstroomdatum wordt afgesloten." sx={{ alignItems: 'flex-start', '& .MuiFormControlLabel-label': { fontSize: 10.5, lineHeight: 1.5 } }} />}
           <Button fullWidth size="large" variant="contained" onClick={save}>Besluit en actie opslaan</Button>
           <Button fullWidth component={RouterLink} to="/uitstroom-registratie" sx={{ mt: .7 }}>Annuleren</Button>
         </Box>
