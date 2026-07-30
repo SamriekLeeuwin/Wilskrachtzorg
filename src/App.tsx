@@ -20,6 +20,7 @@ function App() {
         <Route index element={<DashboardPage />} />
         <Route path="acties" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><WerkvoorraadPage /></RoleGate>} />
         <Route path="acties/nieuw" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
+        <Route path="acties/:taskId/bewerken" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><NieuweTaakPage /></RoleGate>} />
         <Route path="signalen" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><SignalenPage /></RoleGate>} />
         <Route path="jongeren" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongerenPage /></RoleGate>} />
         <Route path="jongeren/:clientCode" element={<RoleGate roles={['Begeleider', 'Gedragswetenschapper', 'Zorgmanager']}><JongereDossierPage /></RoleGate>} />

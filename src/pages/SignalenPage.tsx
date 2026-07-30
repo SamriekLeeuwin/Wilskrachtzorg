@@ -3,7 +3,7 @@ import {
   Alert, Box, Button, Chip, Divider, FormControl, MenuItem, Select, Stack, Typography,
 } from '@mui/material'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import { loadTrajectories, loadWorkQueue } from '../data/demoStore'
@@ -11,20 +11,10 @@ import { workItems } from '../data/careInsights'
 import { deriveSignals, type CareSignal } from '../data/signals'
 import { useWorkspaceRole } from '../context/RoleContext'
 
-const COMPLETED_KEY = 'wkz-demo-completed-signals-v1'
-
 const priorityTone = {
   Kritiek: { bg: '#fbecea', color: '#a44539' },
   Hoog: { bg: '#fff3e5', color: '#925b1d' },
   Normaal: { bg: '#edf4fa', color: '#376b95' },
-}
-
-function loadCompleted() {
-  try {
-    return JSON.parse(window.localStorage.getItem(COMPLETED_KEY) ?? '[]') as string[]
-  } catch {
-    return []
-  }
 }
 
 function roleAllows(signal: CareSignal, role: string) {
@@ -38,24 +28,16 @@ export default function SignalenPage() {
   const { role } = useWorkspaceRole()
   const [type, setType] = useState('Alle typen')
   const [priority, setPriority] = useState('Alle prioriteiten')
-  const [completed, setCompleted] = useState<string[]>(loadCompleted)
   const signals = useMemo(() => deriveSignals(
     loadTrajectories(),
-    loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.status === 'Open'),
+    loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))).filter((item) => item.status === 'Open'),
   ), [])
 
   const visible = signals.filter((signal) =>
-    !completed.includes(signal.id) &&
     roleAllows(signal, role) &&
     (type === 'Alle typen' || signal.type === type) &&
     (priority === 'Alle prioriteiten' || signal.priority === priority)
   )
-
-  const complete = (id: string) => {
-    const next = [...completed, id]
-    setCompleted(next)
-    window.localStorage.setItem(COMPLETED_KEY, JSON.stringify(next))
-  }
 
   return (
     <Stack spacing={2.5}>
@@ -114,13 +96,21 @@ export default function SignalenPage() {
                   </Box>
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${signal.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />}>Dossier</Button>
-                    <Button size="small" variant="contained" startIcon={<CheckCircleRoundedIcon />} onClick={() => complete(signal.id)}>Afhandelen</Button>
+                    <Button
+                      component={RouterLink}
+                      to={`/acties/nieuw?client=${signal.clientCode}&type=${signal.title.includes('UVO') ? 'UVO' : signal.type === 'Veiligheid' ? 'Herstelgesprek' : signal.type === 'Doorstroom' ? 'Vervolgplek' : 'Evaluatie'}&source=${encodeURIComponent(signal.reason)}`}
+                      size="small"
+                      variant="contained"
+                      startIcon={<AddTaskRoundedIcon />}
+                    >
+                      Maak taak
+                    </Button>
                   </Stack>
                 </Stack>
               </Box>
             )
           })}
-          {!visible.length && <Box sx={{ py: 6, textAlign: 'center' }}><CheckCircleRoundedIcon sx={{ color: '#5b9b83' }} /><Typography sx={{ mt: .6, color: '#6f8293', fontSize: 11.5 }}>Geen open signalen binnen deze selectie.</Typography></Box>}
+          {!visible.length && <Box sx={{ py: 6, textAlign: 'center' }}><Typography sx={{ color: '#5b9b83', fontSize: 24 }}>✓</Typography><Typography sx={{ mt: .6, color: '#6f8293', fontSize: 11.5 }}>Geen open signalen binnen deze selectie.</Typography></Box>}
         </Stack>
       </Box>
     </Stack>

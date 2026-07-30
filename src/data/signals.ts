@@ -36,6 +36,21 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
       })
     }
 
+    if (row.activeNotes >= 3 && !workItems.some((item) => item.clientCode === row.clientCode && item.type === 'UVO')) {
+      signals.push({
+        id: `uvo-${row.clientCode}`,
+        clientCode: row.clientCode,
+        type: 'Veiligheid',
+        title: 'UVO moet worden ingepland',
+        reason: `${row.activeNotes} actieve aantekeningen vragen om overleg met het betrokken netwerk.`,
+        nextAction: 'Maak een UVO-taak, wijs een eigenaar toe en leg deelnemers en datum vast.',
+        owner: row.supervisor,
+        due: 'Vandaag',
+        priority: 'Kritiek',
+        source: 'Incidentregistratie + pedagogisch beleid',
+      })
+    }
+
     if (!['Niet nodig', 'Definitief akkoord', 'Geplaatst'].includes(row.followUpPlace) && row.plannedOutflow) {
       signals.push({
         id: `placement-${row.clientCode}`,
@@ -53,7 +68,9 @@ export function deriveSignals(trajectories: Trajectory[], workItems: WorkItem[])
   })
 
   const openRecovery = incidents.filter((incident) => incident.recoveryRequired && !incident.recoveryCompleted)
-  openRecovery.forEach((incident) => {
+  openRecovery.filter((incident) => !workItems.some((item) =>
+    item.clientCode === incident.clientCode && item.type === 'Herstelgesprek'
+  )).forEach((incident) => {
     const trajectory = active.find((row) => row.clientCode === incident.clientCode)
     signals.push({
       id: `recovery-${incident.id}`,

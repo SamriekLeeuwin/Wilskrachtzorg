@@ -61,6 +61,8 @@ function DashboardLayout() {
   const { role, setRole } = useWorkspaceRole()
   const meta = location.pathname.startsWith('/jongeren/')
     ? { title: 'Jongeredossier', eyebrow: 'CLIËNTEN' }
+    : location.pathname.startsWith('/acties/') && location.pathname.endsWith('/bewerken')
+      ? { title: 'Taak wijzigen', eyebrow: 'ACTIES & BESLUITEN' }
     : pageMeta[location.pathname] ?? pageMeta['/']
   const [mobileOpen, setMobileOpen] = useState(false)
 

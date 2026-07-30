@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, FormControl, MenuItem, Select, Stack, Tab, Tabs, TextField, Typography,
@@ -13,9 +13,9 @@ import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import {
-  incidents, monthsBetween, trajectories, workItems,
+  incidents, monthsBetween, trajectories, workItems, type WorkItem,
 } from '../data/careInsights'
-import { loadAppointments, loadPlacementConversations, loadTrajectories, saveAppointments, saveTrajectories } from '../data/demoStore'
+import { loadAppointments, loadPlacementConversations, loadTrajectories, loadWorkQueue, saveAppointments, saveTrajectories } from '../data/demoStore'
 
 type Appointment = {
   id: string
@@ -58,10 +58,13 @@ function JongereDossierPage() {
   const [appointments, setAppointments] = useState<Appointment[]>(() => loadAppointments(initialTrajectory.clientCode, initialAppointments))
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [editError, setEditError] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
   const [newAppointment, setNewAppointment] = useState({ date: '', time: '', type: 'Mentorgesprek', subject: '', participants: '', owner: trajectory.supervisor })
-  const [editValues, setEditValues] = useState({ expectedEndDate: trajectory.expectedEndDate, location: trajectory.location, supervisor: trajectory.supervisor, currentPhase: trajectory.currentPhase })
-  const relatedActions = useMemo(() => workItems.filter((item) => item.clientCode === trajectory.clientCode), [trajectory.clientCode])
+  const [editValues, setEditValues] = useState({ expectedEndDate: trajectory.expectedEndDate, location: trajectory.location, supervisor: trajectory.supervisor, changeReason: '' })
+  const relatedActions = loadWorkQueue<WorkItem>(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.clientCode === trajectory.clientCode)
+  const openActions = relatedActions.filter((item) => item.status !== 'Afgerond')
+  const completedActions = relatedActions.filter((item) => item.status === 'Afgerond')
   const conversation = loadPlacementConversations().find((item) => item.clientCode === trajectory.clientCode)
   const currentDuration = monthsBetween(trajectory.startDate, trajectory.endDate ?? '2026-07-28')
   const overExpected = !trajectory.endDate && new Date(trajectory.expectedEndDate) < new Date('2026-07-28')
@@ -80,11 +83,23 @@ function JongereDossierPage() {
   }
 
   const saveTrajectoryChanges = () => {
-    const updated = { ...trajectory, ...editValues }
+    const dateChanged = editValues.expectedEndDate !== trajectory.expectedEndDate
+    if (dateChanged && !editValues.changeReason.trim()) {
+      setEditError('Vul een reden in voor het wijzigen van de verwachte einddatum.')
+      return
+    }
+    const updated = {
+      ...trajectory,
+      expectedEndDate: editValues.expectedEndDate,
+      location: editValues.location,
+      supervisor: editValues.supervisor,
+      ...(dateChanged ? { previousExpectedEndDate: trajectory.expectedEndDate, expectedEndDateReason: editValues.changeReason.trim() } : {}),
+    }
     setTrajectory(updated)
     const all = loadTrajectories()
     saveTrajectories(all.map((item) => item.clientCode === updated.clientCode ? updated : item))
     setEditOpen(false)
+    setEditError('')
     setSavedMessage('Trajectgegevens zijn bijgewerkt.')
   }
 
@@ -125,7 +140,7 @@ function JongereDossierPage() {
         <Divider />
         <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: 1.5, minHeight: 46, '& .MuiTab-root': { minHeight: 46, fontSize: 11.5, textTransform: 'none', fontWeight: 700 } }}>
           <Tab label="Overzicht" />
-          <Tab label={`Afspraken & acties (${appointments.length + relatedActions.length})`} />
+          <Tab label={`Afspraken & acties (${appointments.length + openActions.length})`} />
           <Tab label="Ontwikkeling" />
           <Tab label="Historie" />
         </Tabs>
@@ -161,16 +176,20 @@ function JongereDossierPage() {
                 <AssignmentTurnedInRoundedIcon sx={{ fontSize: 19, color: '#4f7899' }} />
                 <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Open acties</Typography>
               </Stack>
-              {relatedActions.length ? (
+              {openActions.length ? (
                 <Stack spacing={1.1} sx={{ mt: 1.8 }}>
-                  {relatedActions.map((action) => (
+                  {openActions.map((action) => (
                     <Stack key={action.id} direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" gap={1} sx={{ p: 1.45, border: '1px solid #e7ebef', borderRadius: 1.8 }}>
                       <Box><Typography sx={{ fontSize: 11.5, fontWeight: 720, color: '#30485d' }}>{action.title}</Typography><Typography sx={{ mt: .2, fontSize: 10.2, color: '#8492a2' }}>{action.detail} · {action.owner}</Typography></Box>
-                      <Chip label={action.due} size="small" sx={{ height: 21, bgcolor: action.urgency === 'Te laat' ? '#fbecea' : '#fbf2e7', color: action.urgency === 'Te laat' ? '#a34d41' : '#936020', fontSize: 9.5 }} />
+                      <Stack direction="row" spacing={.7} alignItems="center">
+                        <Chip label={action.due} size="small" sx={{ height: 21, bgcolor: action.urgency === 'Te laat' ? '#fbecea' : '#fbf2e7', color: action.urgency === 'Te laat' ? '#a34d41' : '#936020', fontSize: 9.5 }} />
+                        <Button component={RouterLink} to={`/acties/${action.id}/bewerken`} size="small">Wijzigen</Button>
+                      </Stack>
                     </Stack>
                   ))}
                 </Stack>
               ) : <Typography sx={{ mt: 2, fontSize: 11, color: '#718496' }}>Geen open acties voor deze jongere.</Typography>}
+              <Button component={RouterLink} to={`/acties/nieuw?client=${trajectory.clientCode}`} startIcon={<AddRoundedIcon />} size="small" sx={{ mt: 1.5 }}>Taak toevoegen</Button>
             </Box>
           </Stack>
 
@@ -236,6 +255,12 @@ function JongereDossierPage() {
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
           <Stack direction="row" alignItems="center" spacing={1}><HistoryRoundedIcon sx={{ fontSize: 19, color: '#4f7899' }} /><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Dossierhistorie</Typography></Stack>
           <Stack sx={{ mt: 2 }}>
+            {completedActions.map((event) => (
+              <Stack key={event.id} direction="row" spacing={1.5}>
+                <Stack alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#4d9378', mt: .55 }} /><Box sx={{ width: 1, flex: 1, minHeight: 54, bgcolor: '#dfe5ea' }} /></Stack>
+                <Box sx={{ pb: 2 }}><Typography sx={{ fontSize: 9.8, color: '#8b99a6' }}>{event.completedAt ? new Date(event.completedAt).toLocaleDateString('nl-NL') : 'Recent'} · Afgeronde taak</Typography><Typography sx={{ mt: .25, fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{event.title}</Typography><Typography sx={{ mt: .25, fontSize: 10.5, color: '#718394' }}>{event.completionNote ?? 'Afgerond'} · door {event.owner}</Typography></Box>
+              </Stack>
+            ))}
             {dossierHistory.map((event, index) => (
               <Stack key={event.title} direction="row" spacing={1.5}>
                 <Stack alignItems="center"><Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: event.tone, mt: .55 }} />{index < dossierHistory.length - 1 && <Box sx={{ width: 1, flex: 1, minHeight: 54, bgcolor: '#dfe5ea' }} />}</Stack>
@@ -267,7 +292,11 @@ function JongereDossierPage() {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            {editError && <Alert severity="warning">{editError}</Alert>}
             <TextField fullWidth type="date" label="Verwachte einddatum" value={editValues.expectedEndDate} onChange={(event) => setEditValues({ ...editValues, expectedEndDate: event.target.value })} InputLabelProps={{ shrink: true }} />
+            {editValues.expectedEndDate !== trajectory.expectedEndDate && (
+              <TextField required multiline minRows={2} label="Reden wijziging einddatum" value={editValues.changeReason} onChange={(event) => setEditValues({ ...editValues, changeReason: event.target.value })} helperText="Leg vast waarom de planning wijzigt en wat de nieuwe afspraak is." />
+            )}
             <FormControl fullWidth>
               <Select value={editValues.location} onChange={(event) => setEditValues({ ...editValues, location: event.target.value as typeof editValues.location })} inputProps={{ 'aria-label': 'Locatie' }}>
                 {['Tilburg', 'Breda', 'Eindhoven'].map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}

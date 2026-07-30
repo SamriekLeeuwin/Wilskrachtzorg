@@ -6,7 +6,7 @@ import {
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded'
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { WorkItem } from '../data/careInsights'
 import { workItems } from '../data/careInsights'
 import { loadTrajectories, loadWorkQueue, saveWorkQueue } from '../data/demoStore'
@@ -85,20 +85,33 @@ const addDays = (days: number) => {
 function NieuweTaakPage() {
   const { role } = useWorkspaceRole()
   const navigate = useNavigate()
+  const { taskId } = useParams()
+  const [searchParams] = useSearchParams()
   const trajectories = useMemo(() => loadTrajectories().filter((item) => !item.endDate), [])
   const availableTemplates = templates.filter((template) => template.roles.includes(role))
-  const firstTemplate = availableTemplates[0]
-  const [selectedType, setSelectedType] = useState<TaskType>(firstTemplate.type)
-  const [clientCode, setClientCode] = useState('')
-  const [title, setTitle] = useState(firstTemplate.title)
-  const [detail, setDetail] = useState('')
-  const [expectedResult, setExpectedResult] = useState(firstTemplate.expectedResult)
-  const [policyReason, setPolicyReason] = useState(firstTemplate.policyReason)
-  const [owner, setOwner] = useState('')
-  const [dueDate, setDueDate] = useState(addDays(1))
-  const [dueTime, setDueTime] = useState('16:00')
-  const [urgency, setUrgency] = useState<WorkItem['urgency']>('Deze week')
-  const [checklist, setChecklist] = useState(firstTemplate.checklist)
+  const requestedType = searchParams.get('type') as TaskType | null
+  const firstTemplate = availableTemplates.find((item) => item.type === requestedType) ?? availableTemplates[0]
+  const storedTasks = useMemo(() => loadWorkQueue<SavedTask>(workItems.map((item) => ({
+    ...item,
+    status: 'Open',
+    policyReason: templates.find((template) => template.type === item.type)?.policyReason ?? '',
+    expectedResult: templates.find((template) => template.type === item.type)?.expectedResult,
+    checklist: templates.find((template) => template.type === item.type)?.checklist,
+  }))), [])
+  const existingTask = storedTasks.find((item) => item.id === taskId)
+  const existingTemplate = availableTemplates.find((item) => item.type === existingTask?.type) ?? firstTemplate
+  const [selectedType, setSelectedType] = useState<TaskType>(existingTask?.type ?? firstTemplate.type)
+  const [clientCode, setClientCode] = useState(existingTask?.clientCode ?? searchParams.get('client') ?? '')
+  const [title, setTitle] = useState(existingTask?.title ?? firstTemplate.title)
+  const [detail, setDetail] = useState(existingTask?.detail ?? searchParams.get('source') ?? '')
+  const [expectedResult, setExpectedResult] = useState(existingTask?.expectedResult ?? existingTemplate.expectedResult)
+  const [policyReason, setPolicyReason] = useState(existingTask?.policyReason ?? existingTemplate.policyReason)
+  const initialOwner = trajectories.find((item) => item.clientCode === (existingTask?.clientCode ?? searchParams.get('client')))?.supervisor ?? ''
+  const [owner, setOwner] = useState(existingTask?.owner ?? initialOwner)
+  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? addDays(1))
+  const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '16:00')
+  const [urgency, setUrgency] = useState<WorkItem['urgency']>(existingTask?.urgency ?? 'Deze week')
+  const [checklist, setChecklist] = useState(existingTask?.checklist ?? existingTemplate.checklist)
   const [submitted, setSubmitted] = useState(false)
 
   const owners = Array.from(new Set(trajectories.map((item) => item.supervisor)))
@@ -131,7 +144,7 @@ function NieuweTaakPage() {
     }))
     const current = loadWorkQueue<SavedTask>(defaults)
     const task: SavedTask = {
-      id: `A-${Date.now()}`,
+      id: existingTask?.id ?? `A-${Date.now()}`,
       clientCode,
       type: selectedType,
       title: title.trim(),
@@ -146,8 +159,8 @@ function NieuweTaakPage() {
       checklist,
       status: 'Open',
     }
-    saveWorkQueue([task, ...current])
-    navigate('/acties?created=1')
+    saveWorkQueue(existingTask ? current.map((item) => item.id === existingTask.id ? task : item) : [task, ...current])
+    navigate(`/acties?${existingTask ? 'updated' : 'created'}=1`)
   }
 
   return (
@@ -156,7 +169,7 @@ function NieuweTaakPage() {
         <Button component={RouterLink} to="/acties" startIcon={<ArrowBackRoundedIcon />} sx={{ mb: 1, px: 0 }}>
           Terug naar werkvoorraad
         </Button>
-        <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Nieuwe taak toevoegen</Typography>
+        <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>{existingTask ? 'Taak wijzigen' : 'Nieuwe taak toevoegen'}</Typography>
         <Typography sx={{ mt: .5, maxWidth: 760, fontSize: 11.5, lineHeight: 1.6, color: '#718395' }}>
           Kies een herkenbare taak. De verplichte informatie en standaardstappen worden automatisch klaargezet.
         </Typography>
@@ -199,7 +212,7 @@ function NieuweTaakPage() {
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
             <Typography sx={{ mb: 1.8, fontSize: 13.5, fontWeight: 760, color: '#294157' }}>2. Voor wie en waarom?</Typography>
             <Stack spacing={1.8}>
-              <TextField select required fullWidth label="Jongere / dossier" value={clientCode} onChange={(event) => selectClient(event.target.value)} error={submitted && !clientCode}>
+              <TextField select required fullWidth disabled={Boolean(existingTask)} label="Jongere / dossier" value={clientCode} onChange={(event) => selectClient(event.target.value)} error={submitted && !clientCode}>
                 {trajectories.map((item) => <MenuItem key={item.id} value={item.clientCode}>{item.clientCode} · {item.location} · {item.supervisor}</MenuItem>)}
               </TextField>
               <TextField required fullWidth label="Titel van de taak" value={title} onChange={(event) => setTitle(event.target.value)} error={submitted && !title.trim()} />
@@ -259,7 +272,7 @@ function NieuweTaakPage() {
           <Divider sx={{ my: 2 }} />
           <Stack spacing={1}>
             <Button fullWidth variant="contained" size="large" startIcon={<AssignmentTurnedInRoundedIcon />} onClick={saveTask}>
-              Taak opslaan
+              {existingTask ? 'Wijzigingen opslaan' : 'Taak opslaan'}
             </Button>
             <Button fullWidth component={RouterLink} to="/acties">Annuleren</Button>
           </Stack>

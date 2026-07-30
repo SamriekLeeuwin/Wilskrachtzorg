@@ -7,13 +7,14 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import EventRoundedIcon from '@mui/icons-material/EventRounded'
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadWorkQueue, saveWorkQueue } from '../data/demoStore'
 import { useWorkspaceRole } from '../context/RoleContext'
 
 type ActionStatus = 'Open' | 'Afgerond'
-type ActionRow = WorkItem & { status: ActionStatus; policyReason: string }
+type ActionRow = WorkItem & { status: ActionStatus; policyReason: string; completionNote?: string; completedAt?: string }
 
 const policyReasons: Record<WorkItem['type'], string> = {
   UVO: 'Pedagogisch beleid: bij 3 aantekeningen binnen circa 2–3 weken wordt het netwerk uitgenodigd voor een UVO.',
@@ -52,7 +53,8 @@ function WerkvoorraadPage() {
   const completeAction = () => {
     if (!selected || !completionNote.trim()) return
     setActions((current) => {
-      const next = current.map((item): ActionRow => item.id === selected.id ? { ...item, status: 'Afgerond' } : item)
+      const completedAt = new Date().toISOString()
+      const next = current.map((item): ActionRow => item.id === selected.id ? { ...item, status: 'Afgerond', completionNote: completionNote.trim(), completedAt } : item)
       saveWorkQueue(next)
       return next
     })
@@ -63,6 +65,7 @@ function WerkvoorraadPage() {
   return (
     <Stack spacing={2.5}>
       {searchParams.get('created') === '1' && <Alert severity="success">De taak is toegevoegd en staat nu in de werkvoorraad.</Alert>}
+      {searchParams.get('updated') === '1' && <Alert severity="success">De taak, eigenaar en deadline zijn bijgewerkt.</Alert>}
       <Box sx={{ p: 2.3, bgcolor: '#edf5fb', border: '1px solid #d9e8f3', borderRadius: 2.5 }}>
         <Typography sx={{ fontSize: 13.5, fontWeight: 750, color: '#214969' }}>Eén gezamenlijke werkvoorraad</Typography>
         <Typography sx={{ mt: .4, maxWidth: 850, fontSize: 10.9, lineHeight: 1.55, color: '#567188' }}>
@@ -104,6 +107,7 @@ function WerkvoorraadPage() {
                   </Box>
                   <Stack direction="row" spacing={.8}>
                     <Button component={RouterLink} to={`/jongeren/${item.clientCode}`} size="small" variant="outlined" endIcon={<OpenInNewRoundedIcon />} sx={{ fontSize: 10.5 }}>Dossier</Button>
+                    <Button component={RouterLink} to={`/acties/${item.id}/bewerken`} size="small" variant="outlined" startIcon={<EditRoundedIcon />} sx={{ fontSize: 10.5 }}>Wijzigen</Button>
                     <Button size="small" variant="contained" startIcon={<CheckRoundedIcon />} onClick={() => setSelected(item)} disabled={role === 'Directie'} sx={{ fontSize: 10.5 }}>Afronden</Button>
                   </Stack>
                 </Stack>

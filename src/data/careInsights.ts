@@ -16,6 +16,8 @@ export type Trajectory = {
   location: Exclude<LocationKey, 'Alle locaties'>
   startDate: string
   expectedEndDate: string
+  previousExpectedEndDate?: string
+  expectedEndDateReason?: string
   endDate?: string
   currentPhase: 'Stabilisatie' | 'Verantwoordelijkheid' | 'Onafhankelijkheid' | 'Voorbereiding uitstroom'
   supervisor: string
@@ -37,6 +39,14 @@ export type WorkItem = {
   urgency: 'Vandaag' | 'Deze week' | 'Te laat'
   owner: string
   type: 'Vervolgplek' | 'Herstelgesprek' | 'UVO' | 'Evaluatie'
+  status?: 'Open' | 'Afgerond'
+  policyReason?: string
+  expectedResult?: string
+  checklist?: string[]
+  dueDate?: string
+  dueTime?: string
+  completionNote?: string
+  completedAt?: string
 }
 
 export type PlacementConversation = {

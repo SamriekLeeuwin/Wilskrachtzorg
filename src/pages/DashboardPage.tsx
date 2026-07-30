@@ -44,7 +44,7 @@ function DashboardPage() {
   const overdue = active.filter((item) => new Date(item.expectedEndDate) < new Date('2026-07-28'))
   const qualityIssues = getDataQualityIssues(filtered)
   const completeness = dataCompleteness(filtered)
-  const dashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' }))).filter((item) => item.status === 'Open'), [])
+  const dashboardActions = useMemo(() => loadWorkQueue(workItems.map((item) => ({ ...item, status: 'Open' as const }))).filter((item) => item.status === 'Open'), [])
   const signals = useMemo(() => deriveSignals(allTrajectories, dashboardActions), [allTrajectories, dashboardActions])
   const showManagement = role === 'Zorgmanager' || role === 'Directie'
   const showOperationalWork = role !== 'Directie'
