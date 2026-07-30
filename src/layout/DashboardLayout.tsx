@@ -59,7 +59,11 @@ function DashboardLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const location = useLocation()
   const { role, setRole } = useWorkspaceRole()
-  const meta = location.pathname === '/uitstroom-registratie/bijwerken'
+  const meta = location.pathname.endsWith('/uitnodigingen')
+    ? { title: 'Uitnodigingen beheren', eyebrow: 'AFSPRAAK & DEELNEMERS' }
+    : location.pathname === '/melden'
+    ? { title: 'Iets melden', eyebrow: 'MELDING & OPVOLGING' }
+    : location.pathname === '/uitstroom-registratie/bijwerken'
     ? { title: 'Vervolgplek bijwerken', eyebrow: 'DOORSTROOM & BESLUIT' }
     : location.pathname === '/jongeren/nieuw'
     ? { title: 'Nieuwe intake', eyebrow: 'INSTROOM & DOSSIER' }

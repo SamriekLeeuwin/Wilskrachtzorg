@@ -34,6 +34,7 @@ const emptyIntake: Intake = {
 function JongerenPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const requestedAction = searchParams.get('actie')
   const [rows, setRows] = useState<Trajectory[]>(loadTrajectories)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('Actief')
@@ -93,6 +94,7 @@ function JongerenPage() {
 
   return (
     <Stack spacing={2.5}>
+      {requestedAction && <Alert severity="info">Kies de jongere waarvoor je {requestedAction === 'afspraak' ? 'een afspraak wilt plannen of iemand wilt uitnodigen' : 'dossiergegevens wilt wijzigen'}.</Alert>}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.5}>
         <Box>
           <Typography sx={{ fontSize: 13.5, fontWeight: 720, color: '#314b61' }}>{filtered.length} trajecten zichtbaar</Typography>
@@ -143,8 +145,8 @@ function JongerenPage() {
                   key={row.id}
                   hover
                   tabIndex={0}
-                  onClick={() => navigate(`/jongeren/${row.clientCode}`)}
-                  onKeyDown={(event) => { if (event.key === 'Enter') navigate(`/jongeren/${row.clientCode}`) }}
+                  onClick={() => navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`)}
+                  onKeyDown={(event) => { if (event.key === 'Enter') navigate(requestedAction === 'afspraak' ? `/jongeren/${row.clientCode}/afspraak/nieuw` : `/jongeren/${row.clientCode}${requestedAction === 'wijzigen' ? '?edit=1' : ''}`) }}
                   sx={{ cursor: 'pointer', '&:focus-visible': { outline: '2px solid #2f76ae', outlineOffset: -2 } }}
                 >
                   <TableCell>

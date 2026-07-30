@@ -5,6 +5,7 @@ import {
 } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded'
+import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { workItems, type WorkItem } from '../data/careInsights'
 import { loadAppointments, loadTrajectories, loadWorkQueue, saveAppointments, saveWorkQueue } from '../data/demoStore'
@@ -62,10 +63,13 @@ export default function NieuweAfspraakPage() {
   const [owner, setOwner] = useState(linkedTask?.owner ?? trajectory?.supervisor ?? '')
   const [participants, setParticipants] = useState(initial.participants)
   const [agenda, setAgenda] = useState(initial.agenda)
+  const [invitations, setInvitations] = useState<NonNullable<CareAppointment['invitations']>>([])
+  const [invite, setInvite] = useState({ name: '', role: '', contact: '', channel: 'E-mail' as 'E-mail' | 'Telefoon' })
   const [closeTask, setCloseTask] = useState(Boolean(linkedTask))
   const [submitted, setSubmitted] = useState(false)
   const owners = Array.from(new Set(loadTrajectories().map((item) => item.supervisor)))
-  const valid = Boolean(date && time && subject.trim() && purpose.trim() && owner && participants.length && agenda.length)
+  const invitationRequired = type !== 'Mentorgesprek'
+  const valid = Boolean(date && time && subject.trim() && purpose.trim() && owner && participants.length && agenda.length && (!invitationRequired || invitations.length))
 
   const changeType = (next: string) => {
     const template = templates[next] ?? templates.Mentorgesprek
@@ -74,6 +78,11 @@ export default function NieuweAfspraakPage() {
   }
   const toggle = (value: string, values: string[], setter: (next: string[]) => void) =>
     setter(values.includes(value) ? values.filter((item) => item !== value) : [...values, value])
+  const addInvite = () => {
+    if (!invite.name.trim() || !invite.role.trim() || !invite.contact.trim()) return
+    setInvitations((current) => [...current, { id: `I-${current.length + 1}`, name: invite.name.trim(), role: invite.role.trim(), contact: invite.contact.trim(), channel: invite.channel, status: 'Concept' }])
+    setInvite({ name: '', role: '', contact: '', channel: 'E-mail' })
+  }
 
   const save = () => {
     setSubmitted(true)
@@ -81,7 +90,7 @@ export default function NieuweAfspraakPage() {
     const existing = loadAppointments<CareAppointment>(clientCode, defaultAppointments(clientCode))
     const appointment: CareAppointment = {
       id: `AP-${Date.now()}`, date, time, endTime, type, subject: subject.trim(), purpose: purpose.trim(),
-      participants: participants.join(', '), agenda, owner, relatedTaskId: linkedTask?.id, status: 'Gepland',
+      participants: participants.join(', '), agenda, owner, relatedTaskId: linkedTask?.id, status: 'Gepland', invitations,
     }
     saveAppointments(clientCode, [...existing, appointment].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)))
     if (linkedTask && closeTask) {
@@ -101,7 +110,7 @@ export default function NieuweAfspraakPage() {
         <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>{requestedType} inplannen</Typography>
         <Typography sx={{ mt: .4, fontSize: 11.2, color: '#718395' }}>{clientCode} · {trajectory?.location} · {trajectory?.supervisor}</Typography>
       </Box>
-      {submitted && !valid && <Alert severity="warning">Vul datum, tijd, onderwerp, doel, eigenaar, deelnemers en agenda in.</Alert>}
+      {submitted && !valid && <Alert severity="warning">Vul datum, tijd, onderwerp, doel, eigenaar en agenda in. Voeg voor dit afspraaktype minimaal één echte genodigde met contactgegevens toe.</Alert>}
       {linkedTask && <Alert severity="info">Gekoppeld aan taak “{linkedTask.title}”. De afspraak kan deze taak met bewijs afronden.</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5, alignItems: 'start' }}>
@@ -131,6 +140,17 @@ export default function NieuweAfspraakPage() {
             <Typography sx={{ fontSize: 13.5, fontWeight: 760 }}>3. Deelnemers</Typography>
             <Typography sx={{ mt: .3, mb: 1.1, fontSize: 10.5, color: '#8492a2' }}>Voorgesteld op basis van het afspraaktype. Klik om aan of uit te zetten.</Typography>
             <Stack direction="row" flexWrap="wrap" gap={.8}>{initial.participants.map((item) => <Chip key={item} label={item} clickable color={participants.includes(item) ? 'primary' : 'default'} variant={participants.includes(item) ? 'filled' : 'outlined'} onClick={() => toggle(item, participants, setParticipants)} />)}</Stack>
+            <Divider sx={{ my: 1.8 }} />
+            <Typography sx={{ fontSize: 11.2, fontWeight: 750 }}>Wie moet echt een uitnodiging ontvangen?</Typography>
+            <Typography sx={{ mt: .25, mb: 1.2, fontSize: 9.8, color: '#8492a2' }}>Contactgegevens worden gebruikt om de uitnodiging klaar te zetten. In deze demo wordt nog niets extern verstuurd.</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.2 }}>
+              <TextField size="small" label="Naam of organisatie" value={invite.name} onChange={(event) => setInvite({ ...invite, name: event.target.value })} />
+              <TextField size="small" label="Rol / relatie" value={invite.role} onChange={(event) => setInvite({ ...invite, role: event.target.value })} />
+              <TextField size="small" label={invite.channel === 'E-mail' ? 'E-mailadres' : 'Telefoonnummer'} value={invite.contact} onChange={(event) => setInvite({ ...invite, contact: event.target.value })} />
+              <TextField select size="small" label="Kanaal" value={invite.channel} onChange={(event) => setInvite({ ...invite, channel: event.target.value as 'E-mail' | 'Telefoon' })}><MenuItem value="E-mail">E-mail</MenuItem><MenuItem value="Telefoon">Telefoon</MenuItem></TextField>
+            </Box>
+            <Button startIcon={<PersonAddAltRoundedIcon />} onClick={addInvite} sx={{ mt: 1 }}>Genodigde toevoegen</Button>
+            {invitations.map((item) => <Stack key={item.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: .8, p: 1, bgcolor: '#f7f9fb', borderRadius: 1.3 }}><Box><Typography sx={{ fontSize: 10.7, fontWeight: 700 }}>{item.name} · {item.role}</Typography><Typography sx={{ fontSize: 9.5, color: '#8492a2' }}>{item.channel}: {item.contact}</Typography></Box><Chip label="Concept" size="small" /></Stack>)}
           </Box>
 
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
@@ -145,7 +165,7 @@ export default function NieuweAfspraakPage() {
           <Stack spacing={1.2} sx={{ mt: 1.6 }}>
             <Typography sx={{ fontSize: 11.2 }}><b>{type}</b> · {date}</Typography>
             <Typography sx={{ fontSize: 11.2 }}>{time}–{endTime} · {owner || 'geen eigenaar'}</Typography>
-            <Typography sx={{ fontSize: 11.2 }}>{participants.length} deelnemers · {agenda.length} agendapunten</Typography>
+            <Typography sx={{ fontSize: 11.2 }}>{participants.length} deelnemerrollen · {invitations.length} uitnodigingen · {agenda.length} agendapunten</Typography>
           </Stack>
           {linkedTask && <><Divider sx={{ my: 1.7 }} /><FormControlLabel control={<Checkbox checked={closeTask} onChange={(event) => setCloseTask(event.target.checked)} />} label="Gekoppelde taak afronden" /><Typography sx={{ fontSize: 9.7, color: '#8492a2' }}>Datum, tijden en voorbereiding worden als afrondbewijs opgeslagen.</Typography></>}
           <Divider sx={{ my: 1.7 }} />

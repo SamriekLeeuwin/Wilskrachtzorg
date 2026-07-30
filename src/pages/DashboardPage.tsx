@@ -6,6 +6,11 @@ import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
 import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded'
 import AssignmentLateRoundedIcon from '@mui/icons-material/AssignmentLateRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded'
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded'
+import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded'
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded'
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import { Link as RouterLink } from 'react-router-dom'
 import InsightFilters from '../components/insights/InsightFilters'
 import KpiCard from '../components/insights/KpiCard'
@@ -83,6 +88,29 @@ function DashboardPage() {
           </Button>
         )}
       </Stack>
+
+      {role !== 'Directie' && (
+        <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
+          <Typography sx={{ fontSize: 14.5, fontWeight: 780, color: '#172c42' }}>Wat wil je doen?</Typography>
+          <Typography sx={{ mt: .25, mb: 1.5, fontSize: 10.7, color: '#8492a2' }}>Start direct bij je handeling. Het systeem vraagt daarna alleen de benodigde gegevens.</Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(5, 1fr)' }, gap: 1 }}>
+            {[
+              { label: 'Iets melden', detail: 'Incident of dataprobleem', to: '/melden', icon: <CampaignRoundedIcon /> },
+              { label: 'Taak maken', detail: 'Eigenaar en deadline', to: '/acties/nieuw', icon: <AddTaskRoundedIcon /> },
+              { label: 'Iemand uitnodigen', detail: 'Afspraak en contact', to: '/jongeren?actie=afspraak', icon: <EventAvailableRoundedIcon /> },
+              { label: 'Dossier bekijken', detail: 'Zoeken en inzage', to: '/jongeren', icon: <FolderOpenRoundedIcon /> },
+              { label: 'Gegevens wijzigen', detail: 'Met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon /> },
+            ].map((action) => (
+              <Button key={action.label} component={RouterLink} to={action.to} variant="outlined" sx={{ p: 1.35, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Box sx={{ color: '#3e7199', display: 'flex', '& svg': { fontSize: 20 } }}>{action.icon}</Box>
+                  <Box><Typography sx={{ fontSize: 11.2, fontWeight: 750 }}>{action.label}</Typography><Typography sx={{ fontSize: 9.5, color: '#8492a2' }}>{action.detail}</Typography></Box>
+                </Stack>
+              </Button>
+            ))}
+          </Box>
+        </Box>
+      )}
 
       {showManagement && <InsightFilters value={filters} onChange={setFilters} />}
 

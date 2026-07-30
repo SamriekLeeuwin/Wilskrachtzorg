@@ -43,7 +43,7 @@ function JongereDossierPage() {
   const [tab, setTab] = useState(0)
   const [appointments, setAppointments] = useState<CareAppointment[]>(() => loadAppointments(initialTrajectory.clientCode, defaultAppointments(initialTrajectory.clientCode)))
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(searchParams.get('edit') === '1')
   const [editError, setEditError] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
   const [newAppointment, setNewAppointment] = useState({ date: '', time: '', type: 'Mentorgesprek', subject: '', participants: '', owner: trajectory.supervisor })
@@ -153,8 +153,10 @@ function JongereDossierPage() {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography>
                       <Typography sx={{ mt: .25, fontSize: 10.2, color: '#8492a2' }}>{appointment.time} · {appointment.type} · {appointment.participants}</Typography>
+                      {appointment.invitations?.length ? <Typography sx={{ mt: .3, fontSize: 9.7, color: '#557b99' }}>{appointment.invitations.length} uitnodiging(en) klaargezet · {appointment.invitations.filter((item) => item.status === 'Geaccepteerd').length} geaccepteerd</Typography> : null}
                     </Box>
                     <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/afronden`} size="small">Afronden</Button>
+                    {appointment.invitations?.length ? <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/uitnodigingen`} size="small">Uitnodigingen</Button> : null}
                   </Stack>
                 ))}
                 {!plannedAppointments.length && <Typography sx={{ fontSize: 10.8, color: '#718496' }}>Geen geplande afspraken.</Typography>}
@@ -220,7 +222,7 @@ function JongereDossierPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.25fr .75fr' }, gap: 2 }}>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center"><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Alle afspraken</Typography><Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/nieuw`} size="small" startIcon={<AddRoundedIcon />}>Toevoegen</Button></Stack>
-            <Stack spacing={1.1} sx={{ mt: 1.8 }}>{appointments.map((appointment) => <Box key={appointment.id} sx={{ p: 1.5, border: '1px solid #e6ebef', borderRadius: 1.8 }}><Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1}><Box><Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography><Typography sx={{ mt: .3, fontSize: 10.2, color: '#8492a2' }}>{appointment.type} · {appointment.participants}</Typography>{appointment.status === 'Afgerond' && <Typography sx={{ mt: .5, fontSize: 10.2, color: '#4d806d' }}>Afgerond · {appointment.decision}</Typography>}</Box><Stack alignItems={{ sm: 'flex-end' }} spacing={.5}><Typography sx={{ fontSize: 10.5, fontWeight: 680, color: '#557188', whiteSpace: 'nowrap' }}>{new Date(appointment.date).toLocaleDateString('nl-NL')} · {appointment.time}</Typography>{appointment.status !== 'Afgerond' && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/afronden`} size="small">Gesprek afronden</Button>}</Stack></Stack></Box>)}</Stack>
+            <Stack spacing={1.1} sx={{ mt: 1.8 }}>{appointments.map((appointment) => <Box key={appointment.id} sx={{ p: 1.5, border: '1px solid #e6ebef', borderRadius: 1.8 }}><Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1}><Box><Typography sx={{ fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{appointment.subject}</Typography><Typography sx={{ mt: .3, fontSize: 10.2, color: '#8492a2' }}>{appointment.type} · {appointment.participants}</Typography>{appointment.invitations?.length ? <Typography sx={{ mt: .35, fontSize: 9.7, color: '#557b99' }}>Uitnodigingen: {appointment.invitations.map((item) => `${item.name} (${item.status})`).join(' · ')}</Typography> : null}{appointment.status === 'Afgerond' && <Typography sx={{ mt: .5, fontSize: 10.2, color: '#4d806d' }}>Afgerond · {appointment.decision}</Typography>}</Box><Stack alignItems={{ sm: 'flex-end' }} spacing={.5}><Typography sx={{ fontSize: 10.5, fontWeight: 680, color: '#557188', whiteSpace: 'nowrap' }}>{new Date(appointment.date).toLocaleDateString('nl-NL')} · {appointment.time}</Typography>{appointment.status !== 'Afgerond' && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/${appointment.id}/afronden`} size="small">Gesprek afronden</Button>}</Stack></Stack></Box>)}</Stack>
           </Box>
           <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Afspraken vastleggen</Typography><Typography sx={{ mt: 1, fontSize: 11, lineHeight: 1.65, color: '#64788a' }}>Leg onderwerp, deelnemers, eigenaar en tijd vast. Besluiten en vervolgacties horen na het gesprek in het dossier, zodat management en begeleiding dezelfde actuele informatie zien.</Typography></Box>
         </Box>

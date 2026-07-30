@@ -16,6 +16,14 @@ export type CareAppointment = {
   decision?: string
   followUp?: string
   completedAt?: string
+  invitations?: Array<{
+    id: string
+    name: string
+    role: string
+    contact: string
+    channel: 'E-mail' | 'Telefoon'
+    status: 'Concept' | 'Verzonden' | 'Geaccepteerd' | 'Afgewezen'
+  }>
 }
 
 const wkz001Appointments: CareAppointment[] = [

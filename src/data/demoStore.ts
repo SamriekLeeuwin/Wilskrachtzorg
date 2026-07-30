@@ -3,6 +3,7 @@ import { trajectories, placementConversations, type PlacementConversation, type 
 const TRAJECTORIES_KEY = 'wkz-demo-trajectories-v1'
 const CONVERSATIONS_KEY = 'wkz-demo-placement-conversations-v1'
 const WORK_QUEUE_KEY = 'wkz-demo-work-queue-v1'
+const REPORTS_KEY = 'wkz-demo-reports-v1'
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
@@ -66,4 +67,19 @@ export function loadWorkQueue<T>(fallback: T[]): T[] {
 
 export function saveWorkQueue<T>(rows: T[]) {
   if (canUseStorage()) window.localStorage.setItem(WORK_QUEUE_KEY, JSON.stringify(rows))
+}
+
+export function loadReports<T>(fallback: T[]): T[] {
+  if (!canUseStorage()) return fallback
+  const stored = window.localStorage.getItem(REPORTS_KEY)
+  if (!stored) return fallback
+  try {
+    return JSON.parse(stored) as T[]
+  } catch {
+    return fallback
+  }
+}
+
+export function saveReports<T>(rows: T[]) {
+  if (canUseStorage()) window.localStorage.setItem(REPORTS_KEY, JSON.stringify(rows))
 }
