@@ -1,1 +1,0 @@
-function d(e){return{...e,status:["Ter beoordeling","Advies gereed","Herbeoordeling nodig","Besluit vastgelegd"].includes(e.status)?e.status:"Ter beoordeling",createdByRole:e.createdByRole??"Begeleider",updatedAt:e.updatedAt??e.createdAt}}export{d as n};
