@@ -13,6 +13,7 @@ import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded'
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router-dom'
 import {
   incidentCount90d, incidents, workItems, workItemVisibleForRole, type Trajectory, type WorkItem,
@@ -41,8 +42,15 @@ const goalsByClient: Record<string, Array<{ label: string; progress: number; sta
   ],
 }
 
+const documentsByClient: Record<string, Array<{ id: string; title: string; type: string; version: string; date: string; source: string; status: string }>> = {
+  'WKZ-001': [
+    { id: 'DOC-001', title: 'Zorgplan – actuele samenvatting', type: 'Zorgplan', version: 'v3', date: '2026-07-18', source: 'Zilliz (demoreferentie)', status: 'Geldig' },
+    { id: 'DOC-002', title: 'Beschikking jeugdhulp', type: 'Beschikking', version: 'v2', date: '2026-06-30', source: 'Gemeente (demoreferentie)', status: 'Geldig tot 31 dec 2026' },
+  ],
+}
+
 function InfoField({ label, value }: { label: string; value: string }) {
-  return <Box><Typography sx={{ fontSize: 9.5, fontWeight: 760, letterSpacing: '.06em', color: '#8997a5', textTransform: 'uppercase' }}>{label}</Typography><Typography sx={{ mt: .35, fontSize: 11.5, fontWeight: 650, color: '#30485d' }}>{value}</Typography></Box>
+  return <Box><Typography sx={{ fontSize: 11.5, fontWeight: 760, letterSpacing: '.04em', color: '#748594', textTransform: 'uppercase' }}>{label}</Typography><Typography sx={{ mt: .35, fontSize: 14, fontWeight: 650, color: '#30485d' }}>{value}</Typography></Box>
 }
 
 function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }) {
@@ -55,7 +63,9 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
   const canViewIncidentAnalysis = ['Gedragswetenschapper', 'Zorgmanager'].includes(role)
   const [trajectory, setTrajectory] = useState(initialTrajectory)
   const requestedTab = searchParams.get('tab')
-  const [tab, setTab] = useState(requestedTab === 'work' ? 1 : requestedTab === 'development' ? 2 : requestedTab === 'network' ? 3 : requestedTab === 'history' ? 4 : 0)
+  const [tab, setTab] = useState(requestedTab === 'work' ? 1 : requestedTab === 'development' ? 2 : requestedTab === 'network' ? 3 : requestedTab === 'documents' ? 4 : requestedTab === 'history' ? 5 : 0)
+  const [historyType, setHistoryType] = useState('Alles')
+  const [historyQuery, setHistoryQuery] = useState('')
   const [appointments] = useState<CareAppointment[]>(() => loadAppointments(initialTrajectory.clientCode, defaultAppointments(initialTrajectory.clientCode)))
   const [editOpen, setEditOpen] = useState(canManageTrajectory && searchParams.get('edit') === '1')
   const [editError, setEditError] = useState('')
@@ -81,7 +91,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
     .filter((event) => !placementRows.some((placement) => placement.subject === event.title))
   const goalRows = goalsByClient[trajectory.clientCode] ?? []
   const networkRows = contactsForClient(trajectory.clientCode, loadNetworkContacts())
-  const latestNetworkContact = networkRows[0]
+  const latestNetworkContact = networkRows.find((item) => !item.correctedAt)
   const networkAttention = networkRows.filter((item) => contactNeedsAttention(item))
   const attentionItems = role === 'Gedragswetenschapper'
     ? [
@@ -100,6 +110,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
         plannedAppointments.length ? `Eerstvolgende afspraak: ${new Date(`${plannedAppointments[0].date}T12:00:00`).toLocaleDateString('nl-NL')}` : '',
         linkedIncidents.some((item) => item.recoveryRequired && !item.recoveryCompleted) ? 'Herstelafspraak is nog niet afgerond' : '',
       ].filter(Boolean)
+  const documentRows = documentsByClient[trajectory.clientCode] ?? []
 
   const timelineEvents = [
     ...plannedAppointments.filter((event) => event.createdAt).map((event) => ({
@@ -156,8 +167,8 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
       timestamp: event.createdAt.startsWith(event.contactDate) ? event.createdAt : `${event.contactDate}T12:00:00`,
       type: 'Gemeente / verwijzer',
       title: event.subject,
-      detail: `${event.agreement}${event.nextAction ? ` Vervolg: ${event.nextAction}` : ''} Gedeeld: ${event.sharedDataScope}`,
-      meta: `${event.organisation} · ${event.resolvedAt ? 'opgevolgd' : event.status} · ${event.owner} · geregistreerd door ${event.createdByRole.toLowerCase()} · grondslag: ${event.sharingBasis}`,
+      detail: `${event.agreement}${event.nextAction ? ` Vervolg: ${event.nextAction}` : ''} Gedeeld: ${event.sharedDataScope}${event.correctionReason ? ` Correctiereden: ${event.correctionReason}` : ''}`,
+      meta: `${event.organisation} · ${event.correctedAt ? 'gecorrigeerde oorspronkelijke versie' : event.resolvedAt ? 'opgevolgd' : event.status} · ${event.owner} · geregistreerd door ${event.createdByRole.toLowerCase()} · grondslag: ${event.sharingBasis}`,
       tone: '#4d7899',
     })),
     ...placementRows.map((event) => ({
@@ -193,6 +204,13 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
       tone: '#765b9a',
     })),
   ].sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+  const historyTypes = ['Alles', ...Array.from(new Set(timelineEvents.map((event) => event.type)))]
+  const visibleTimelineEvents = timelineEvents.filter((event) => {
+    const matchesType = historyType === 'Alles' || event.type === historyType
+    const query = historyQuery.trim().toLowerCase()
+    const matchesQuery = !query || `${event.title} ${event.detail} ${event.meta} ${event.type}`.toLowerCase().includes(query)
+    return matchesType && matchesQuery
+  })
 
   const saveTrajectoryChanges = () => {
     if (!trajectoryEditChanged) {
@@ -240,32 +258,35 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
   }
 
   return (
-    <Stack spacing={2.3}>
+    <Stack spacing={2.3} className="dossier-page">
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} gap={1.3}>
         <Button component={RouterLink} to="/jongeren" startIcon={<ArrowBackRoundedIcon />} sx={{ alignSelf: 'flex-start', color: '#5b7185' }}>Terug naar jongeren</Button>
-        <Stack direction="row" spacing={1}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           {canManageTrajectory && <Button variant="outlined" startIcon={<EditRoundedIcon />} onClick={() => setEditOpen(true)}>Trajectgegevens wijzigen</Button>}
           {canPlanAppointments && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/afspraak/nieuw`} variant="contained" startIcon={<AddRoundedIcon />}>Afspraak inplannen</Button>}
         </Stack>
       </Stack>
 
-      {(savedMessage || searchParams.get('appointment') === 'created' || searchParams.get('meeting') === 'completed' || searchParams.get('intake') === 'created' || searchParams.get('placement') === 'updated' || searchParams.get('contact') === 'created' || searchParams.get('task')) && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage || (searchParams.get('contact') === 'created' ? 'Het contactmoment, de externe status en de eventuele vervolgtaak zijn in het dossier vastgelegd.' : searchParams.get('task') === 'created' ? 'De taak is toegevoegd en blijft binnen dit cliëntdossier terug te vinden.' : searchParams.get('task') === 'updated' ? 'De taak is bijgewerkt en blijft gekoppeld aan dit cliëntdossier.' : searchParams.get('placement') === 'updated' ? 'De vervolgplekstatus, het besluit en de vervolgtaak zijn samen bijgewerkt.' : searchParams.get('intake') === 'created' ? 'Het dossier en traject zijn gestart. Controleer nu de eerste afspraken en acties.' : searchParams.get('meeting') === 'completed' ? 'Het gesprek, besluit en eventuele vervolgtaak zijn vastgelegd in het dossier.' : 'De afspraak, deelnemers en agenda zijn opgeslagen. De gekoppelde taak is bijgewerkt.')}</Alert>}
+      {(savedMessage || searchParams.get('appointment') === 'created' || searchParams.get('meeting') === 'completed' || searchParams.get('intake') === 'created' || searchParams.get('placement') === 'updated' || searchParams.get('contact') || searchParams.get('task')) && <Alert severity="success" onClose={() => setSavedMessage('')}>{savedMessage || (searchParams.get('contact') === 'corrected' ? 'De correctie is als nieuwe versie vastgelegd. De oorspronkelijke registratie blijft zichtbaar in de historie.' : searchParams.get('contact') === 'created' ? 'Het gemeente-/verwijzercontact, de uitkomst en de eventuele vervolgtaak zijn in het dossier vastgelegd.' : searchParams.get('task') === 'created' ? 'De taak is toegevoegd en blijft binnen dit cliëntdossier terug te vinden.' : searchParams.get('task') === 'updated' ? 'De taak is bijgewerkt en blijft gekoppeld aan dit cliëntdossier.' : searchParams.get('placement') === 'updated' ? 'De vervolgplekstatus, het besluit en de vervolgtaak zijn samen bijgewerkt.' : searchParams.get('intake') === 'created' ? 'Het dossier en traject zijn gestart. Controleer nu de eerste afspraken en acties.' : searchParams.get('meeting') === 'completed' ? 'Het gesprek, besluit en eventuele vervolgtaak zijn vastgelegd in het dossier.' : 'De afspraak, deelnemers en agenda zijn opgeslagen. De gekoppelde taak is bijgewerkt.')}</Alert>}
 
       <Box sx={{ p: 2, bgcolor: attentionItems.length ? '#fff8ec' : '#edf7f2', border: `1px solid ${attentionItems.length ? '#f0d8ad' : '#cfe6da'}`, borderRadius: 2.5 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1.2}>
           <Box>
             <Stack direction="row" spacing={.8} alignItems="center">
               <WarningAmberRoundedIcon sx={{ fontSize: 18, color: attentionItems.length ? '#9c651f' : '#36765f' }} />
-              <Typography sx={{ fontSize: 13.2, fontWeight: 780, color: '#294157' }}>Aandacht nu</Typography>
+              <Typography sx={{ fontSize: 16, fontWeight: 780, color: '#294157' }}>Aandacht en volgende stap</Typography>
             </Stack>
             {attentionItems.length ? (
               <Stack component="ul" spacing={.35} sx={{ mt: .8, mb: 0, pl: 2.2 }}>
-                {attentionItems.slice(0, 3).map((item) => <Typography component="li" key={item} sx={{ fontSize: 10.8, color: '#5f7180' }}>{item}</Typography>)}
+                {attentionItems.slice(0, 3).map((item) => <Typography component="li" key={item} sx={{ fontSize: 13.5, color: '#5f7180' }}>{item}</Typography>)}
               </Stack>
-            ) : <Typography sx={{ mt: .6, fontSize: 10.8, color: '#567568' }}>Geen urgente uitzondering gevonden voor deze rol.</Typography>}
+            ) : <Typography sx={{ mt: .6, fontSize: 13.5, color: '#567568' }}>Geen urgente uitzondering gevonden voor deze rol.</Typography>}
           </Box>
-          {role === 'Gedragswetenschapper' && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} variant="contained" size="small" sx={{ alignSelf: { md: 'center' } }}>Gemeentecontact vastleggen</Button>}
-          {role === 'Zorgmanager' && overExpected && <Button variant="contained" size="small" onClick={() => setEditOpen(true)} sx={{ alignSelf: { md: 'center' } }}>Planning herbeoordelen</Button>}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignSelf: { md: 'center' } }}>
+            {role === 'Gedragswetenschapper' && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} variant="contained" size="small">Gemeente-/verwijzercontact vastleggen</Button>}
+            {role === 'Zorgmanager' && overExpected && <Button variant="contained" size="small" onClick={() => setEditOpen(true)}>Planning herbeoordelen</Button>}
+            {attentionItems.length > 0 && <Button variant="outlined" size="small" onClick={() => setTab(role === 'Gedragswetenschapper' && networkAttention.length ? 3 : 1)}>Open relevante opvolging</Button>}
+          </Stack>
         </Stack>
       </Box>
 
@@ -274,7 +295,8 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
           <Stack direction="row" spacing={1.5} sx={{ minWidth: 220 }}>
             <Avatar sx={{ width: 48, height: 48, bgcolor: '#dfeefa', color: '#315f83', fontSize: 14, fontWeight: 800 }}>{trajectory.clientCode.slice(-2)}</Avatar>
             <Box>
-              <Typography sx={{ fontSize: 18, fontWeight: 780, color: '#172c42' }}>{trajectory.clientCode}</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 760, color: '#718395' }}>Demodossier</Typography>
+              <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>{trajectory.clientCode}</Typography>
               <Stack direction="row" spacing={.7} sx={{ mt: .6 }}>
                 <Chip label={trajectory.endDate ? 'Afgerond' : 'Actief'} size="small" sx={{ height: 20, bgcolor: trajectory.endDate ? '#eef1f4' : '#eaf6f1', color: trajectory.endDate ? '#687887' : '#28745d', fontSize: 9.5 }} />
                 {overExpected && <Chip label="Verwachte einddatum overschreden" size="small" sx={{ height: 20, bgcolor: '#fbecea', color: '#a34d41', fontSize: 9.5 }} />}
@@ -282,22 +304,22 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
             </Box>
           </Stack>
           <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', xl: 'repeat(7, 1fr)' }, gap: 2.2, flex: 1 }}>
-            <InfoField label="Vóór instroom" value={`${trajectory.originCity}, ${trajectory.originMunicipality}`} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', xl: 'repeat(6, 1fr)' }, gap: 2.2, flex: 1 }}>
             <InfoField label="Locatie" value={trajectory.location} />
-            <InfoField label="Begeleider" value={trajectory.supervisor} />
+            <InfoField label="Hoofdbegeleider" value={trajectory.supervisor} />
             <InfoField label="Trajectfase" value={trajectory.currentPhase ?? 'Niet vastgelegd'} />
-            <InfoField label="Incidenten (90 dagen)" value={String(incidentCount90d(trajectory.clientCode))} />
+            <InfoField label="Veiligheid" value={linkedIncidents.some((item) => item.recoveryRequired && !item.recoveryCompleted) ? 'Opvolging open' : `${incidentCount90d(trajectory.clientCode)} incident(en) · 90 dagen`} />
             <InfoField label="Verwachte einddatum" value={new Date(`${trajectory.expectedEndDate}T12:00:00`).toLocaleDateString('nl-NL')} />
             <InfoField label="In zorg sinds" value={new Date(trajectory.startDate).toLocaleDateString('nl-NL')} />
           </Box>
         </Stack>
         <Divider />
-        <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: 1.5, minHeight: 46, '& .MuiTab-root': { minHeight: 46, fontSize: 11.5, textTransform: 'none', fontWeight: 700 } }}>
+        <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto" sx={{ px: 1.5, minHeight: 48, '& .MuiTab-root': { minHeight: 48, fontSize: 13, textTransform: 'none', fontWeight: 700 } }}>
           <Tab label="Overzicht" />
-          <Tab label={`Werk (${appointments.length + openActions.length})`} />
-          <Tab label="Doelen" />
+          <Tab label={`Afspraken & taken (${plannedAppointments.length + openActions.length})`} />
+          <Tab label="Doelen & evaluaties" />
           <Tab label={`Netwerk (${networkRows.length})`} />
+          <Tab label={`Documenten (${documentRows.length})`} />
           <Tab label="Historie" />
         </Tabs>
       </Box>
@@ -318,7 +340,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
                 <InfoField label="Volgende deadline" value={latestNetworkContact?.dueDate ? `${new Date(`${latestNetworkContact.dueDate}T12:00:00`).toLocaleDateString('nl-NL')} · ${latestNetworkContact.owner}` : 'Geen open deadline'} />
               </Box>
               <Button fullWidth variant="outlined" size="small" onClick={() => setTab(3)} sx={{ mt: 2 }}>Open netwerk en contacthistorie</Button>
-              {canCreateNetworkContact && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} fullWidth variant="contained" size="small" sx={{ mt: 1 }}>Contactmoment vastleggen</Button>}
+              {canCreateNetworkContact && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} fullWidth variant="contained" size="small" sx={{ mt: 1 }}>Gemeente-/verwijzercontact vastleggen</Button>}
             </Box>
 
             <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
@@ -396,7 +418,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
                 <Box sx={{ p: 1.4, bgcolor: '#f8fafb', borderRadius: 1.5 }}><Typography sx={{ fontSize: 20, fontWeight: 780, color: '#2c485f' }}>{linkedIncidents.filter((item) => item.measure === 'Aantekening' && item.date >= '2026-04-29').length}</Typography><Typography sx={{ fontSize: 9.5, color: '#8492a2' }}>actieve aantekeningen</Typography></Box>
               </Box>
               <Typography sx={{ mt: 1.2, fontSize: 9.8, color: '#8192a1' }}>Alleen-lezen uit Zilliz · laatste synchronisatie 28 juli, 08:42</Typography>
-              {canViewIncidentAnalysis && <Button component={RouterLink} to="/gedrag-analyse" fullWidth variant="outlined" size="small" sx={{ mt: 1.4 }}>Bekijk incidentanalyse</Button>}
+              {canViewIncidentAnalysis && <Button component={RouterLink} to={`/gedrag-analyse?client=${trajectory.clientCode}`} fullWidth variant="outlined" size="small" sx={{ mt: 1.4 }}>Bekijk incidentanalyse voor dit dossier</Button>}
             </Box>
           </Stack>
         </Box>
@@ -443,7 +465,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
                 <Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Contactmomenten en externe besluiten</Typography>
                 <Typography sx={{ mt: .3, fontSize: 10.8, color: '#8492a2' }}>Nieuwste eerst · status, deadline en eigenaar blijven bij elkaar</Typography>
               </Box>
-              {canCreateNetworkContact && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} variant="contained" size="small">Contactmoment vastleggen</Button>}
+              {canCreateNetworkContact && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw`} variant="contained" size="small">Gemeente-/verwijzercontact vastleggen</Button>}
             </Stack>
             <Divider />
             <Stack divider={<Divider flexItem />}>
@@ -455,13 +477,14 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
                       <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Stack direction="row" spacing={.8} alignItems="center" flexWrap="wrap">
                           <Typography sx={{ fontSize: 12.3, fontWeight: 740, color: '#294157' }}>{contact.subject}</Typography>
-                          <Chip label={contact.resolvedAt ? 'Opgevolgd' : contact.status} size="small" sx={{ height: 21, bgcolor: needsAttention ? '#fff1df' : '#eaf6f1', color: needsAttention ? '#936020' : '#28745d', fontSize: 9.5 }} />
+                          <Chip label={contact.correctedAt ? 'Gecorrigeerd' : contact.resolvedAt ? 'Opgevolgd' : contact.status} size="small" sx={{ height: 24, bgcolor: contact.correctedAt ? '#eef1f4' : needsAttention ? '#fff1df' : '#eaf6f1', color: contact.correctedAt ? '#5f6d79' : needsAttention ? '#936020' : '#28745d', fontSize: 11.5 }} />
                         </Stack>
-                        <Typography sx={{ mt: .35, fontSize: 10.2, color: '#718395' }}>{new Date(`${contact.contactDate}T12:00:00`).toLocaleDateString('nl-NL')} · {contact.organisation} · {contact.contactPerson} ({contact.contactRole}) · {contact.channel}</Typography>
-                        <Typography sx={{ mt: 1, fontSize: 10.8, lineHeight: 1.6, color: '#53697b' }}>{contact.summary}</Typography>
-                        <Typography sx={{ mt: .7, fontSize: 9.7, lineHeight: 1.55, color: '#7a8b99' }}>
+                        <Typography sx={{ mt: .35, fontSize: 13, color: '#718395' }}>{new Date(`${contact.contactDate}T12:00:00`).toLocaleDateString('nl-NL')} · {contact.organisation} · {contact.contactPerson} ({contact.contactRole}) · {contact.channel}{contact.direction ? ` · ${contact.direction}` : ''}</Typography>
+                        <Typography sx={{ mt: 1, fontSize: 13.5, lineHeight: 1.6, color: '#53697b' }}>{contact.summary}</Typography>
+                        <Typography sx={{ mt: .7, fontSize: 12.5, lineHeight: 1.55, color: '#7a8b99' }}>
                           Gegevensdeling: {contact.sharingBasis} · {contact.sharedDataScope} · geregistreerd door {contact.createdByRole.toLowerCase()}
                         </Typography>
+                        {contact.correctionReason && <Alert severity="info" sx={{ mt: 1 }}>Correctie op eerdere registratie: {contact.correctionReason}</Alert>}
                         <Box sx={{ mt: 1.1, p: 1.2, bgcolor: '#f7f9fb', borderRadius: 1.5 }}>
                           <Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#80909e', letterSpacing: '.06em' }}>AFSPRAAK / BESLUIT</Typography>
                           <Typography sx={{ mt: .3, fontSize: 10.8, color: '#40566a' }}>{contact.agreement}</Typography>
@@ -471,6 +494,7 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
                         <Typography sx={{ fontSize: 9.3, fontWeight: 800, color: '#708598', letterSpacing: '.06em' }}>VERVOLG</Typography>
                         <Typography sx={{ mt: .35, fontSize: 10.8, fontWeight: 650, color: '#3d5970' }}>{contact.resolvedAt ? 'Opgevolgd in een later contactmoment' : contact.nextAction ?? 'Geen vervolgactie open'}</Typography>
                         <Typography sx={{ mt: .5, fontSize: 9.8, color: '#728596' }}>{contact.owner}{!contact.resolvedAt && contact.dueDate ? ` · vóór ${new Date(`${contact.dueDate}T12:00:00`).toLocaleDateString('nl-NL')}` : ''}</Typography>
+                        {canCreateNetworkContact && !contact.correctedAt && <Button component={RouterLink} to={`/jongeren/${trajectory.clientCode}/netwerkcontact/nieuw?corrects=${contact.id}`} size="small" sx={{ mt: 1, px: 0 }}>Correctie toevoegen</Button>}
                       </Box>
                     </Stack>
                   </Box>
@@ -510,25 +534,58 @@ function DossierContent({ initialTrajectory }: { initialTrajectory: Trajectory }
 
       {tab === 4 && (
         <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
-          <Stack direction="row" alignItems="center" spacing={1}><HistoryRoundedIcon sx={{ fontSize: 19, color: '#4f7899' }} /><Typography sx={{ fontSize: 14.5, fontWeight: 760, color: '#172c42' }}>Dossierhistorie</Typography></Stack>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <DescriptionRoundedIcon sx={{ fontSize: 21, color: '#4f7899' }} />
+            <Box>
+              <Typography sx={{ fontSize: 16, fontWeight: 760, color: '#172c42' }}>Documenten en bronversies</Typography>
+              <Typography sx={{ mt: .25, fontSize: 13, color: '#718395' }}>Alleen gevalideerde documentreferenties; het zorgbronsysteem blijft de bron.</Typography>
+            </Box>
+          </Stack>
+          <Alert severity="info" sx={{ mt: 2 }}>Dit prototype toont documentmetadata en versies, maar opent of wijzigt geen echte documenten. Productie vereist bronautorisatie, versiebeheer en een goedgekeurde wijzigingsflow.</Alert>
+          <Stack spacing={1.2} sx={{ mt: 2 }}>
+            {documentRows.map((document) => (
+              <Stack key={document.id} direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={1.2} sx={{ p: 1.7, border: '1px solid #e3e9ef', borderRadius: 1.8 }}>
+                <Box>
+                  <Typography sx={{ fontSize: 14, fontWeight: 740, color: '#30485d' }}>{document.title}</Typography>
+                  <Typography sx={{ mt: .35, fontSize: 12.5, color: '#718395' }}>{document.type} · {document.version} · bijgewerkt {new Date(`${document.date}T12:00:00`).toLocaleDateString('nl-NL')}</Typography>
+                  <Typography sx={{ mt: .35, fontSize: 12.5, color: '#718395' }}>Bron: {document.source}</Typography>
+                </Box>
+                <Chip label={document.status} size="small" sx={{ alignSelf: { sm: 'center' }, bgcolor: '#eaf6f1', color: '#28745d' }} />
+              </Stack>
+            ))}
+            {!documentRows.length && <Alert severity="warning">Voor dit dossier zijn nog geen gevalideerde documentreferenties beschikbaar. Dit betekent niet dat er geen documenten bestaan in het bronsysteem.</Alert>}
+          </Stack>
+        </Box>
+      )}
+
+      {tab === 5 && (
+        <Box sx={{ bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5, p: 2.4 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1.5}>
+            <Stack direction="row" alignItems="center" spacing={1}><HistoryRoundedIcon sx={{ fontSize: 21, color: '#4f7899' }} /><Typography sx={{ fontSize: 16, fontWeight: 760, color: '#172c42' }}>Dossierhistorie</Typography></Stack>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ minWidth: { md: 480 } }}>
+              <TextField size="small" fullWidth label="Zoek in historie" value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} />
+              <TextField select size="small" label="Type gebeurtenis" value={historyType} onChange={(event) => setHistoryType(event.target.value)} sx={{ minWidth: 190 }}>
+                {historyTypes.map((type) => <MenuItem key={type} value={type}>{type}</MenuItem>)}
+              </TextField>
+            </Stack>
+          </Stack>
           <Stack sx={{ mt: 2 }}>
-            {timelineEvents.map((event, index) => (
+            {visibleTimelineEvents.map((event, index) => (
               <Stack key={event.id} direction="row" spacing={1.5}>
                 <Stack alignItems="center">
                   <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: event.tone, mt: .55 }} />
-                  {index < timelineEvents.length - 1 && <Box sx={{ width: 1, flex: 1, minHeight: 66, bgcolor: '#dfe5ea' }} />}
+                  {index < visibleTimelineEvents.length - 1 && <Box sx={{ width: 1, flex: 1, minHeight: 66, bgcolor: '#dfe5ea' }} />}
                 </Stack>
-                <Box sx={{ pb: index < timelineEvents.length - 1 ? 2 : 0 }}>
-                  <Typography sx={{ fontSize: 9.8, color: '#8b99a6' }}>{new Date(event.timestamp).toLocaleString('nl-NL')} · {event.type}</Typography>
-                  <Typography sx={{ mt: .25, fontSize: 11.8, fontWeight: 720, color: '#30485d' }}>{event.title}</Typography>
-                  <Typography sx={{ mt: .25, fontSize: 10.5, lineHeight: 1.55, color: '#718394' }}>{event.detail}</Typography>
-                  <Typography sx={{ mt: .35, fontSize: 9.7, color: '#8a98a5' }}>{event.meta}</Typography>
+                <Box sx={{ pb: index < visibleTimelineEvents.length - 1 ? 2 : 0 }}>
+                  <Typography sx={{ fontSize: 12.5, color: '#7a8996' }}>{new Date(event.timestamp).toLocaleString('nl-NL')} · {event.type}</Typography>
+                  <Typography sx={{ mt: .25, fontSize: 14, fontWeight: 720, color: '#30485d' }}>{event.title}</Typography>
+                  <Typography sx={{ mt: .25, fontSize: 13, lineHeight: 1.55, color: '#65798a' }}>{event.detail}</Typography>
+                  <Typography sx={{ mt: .35, fontSize: 12.5, color: '#7a8996' }}>{event.meta}</Typography>
                 </Box>
               </Stack>
             ))}
-            {!timelineEvents.length && (
-              <Alert severity="info">Voor dit dossier bevat de prototypebron nog geen gevalideerde historie.</Alert>
-            )}
+            {!timelineEvents.length && <Alert severity="info">Voor dit dossier bevat de prototypebron nog geen gevalideerde historie.</Alert>}
+            {timelineEvents.length > 0 && !visibleTimelineEvents.length && <Alert severity="info">Geen gebeurtenissen gevonden voor deze zoekopdracht en dit type.</Alert>}
           </Stack>
         </Box>
       )}

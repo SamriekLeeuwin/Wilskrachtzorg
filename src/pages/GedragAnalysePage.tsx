@@ -4,7 +4,7 @@ import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded'
 import GppMaybeRoundedIcon from '@mui/icons-material/GppMaybeRounded'
 import ForumRoundedIcon from '@mui/icons-material/ForumRounded'
 import EventBusyRoundedIcon from '@mui/icons-material/EventBusyRounded'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import KpiCard from '../components/insights/KpiCard'
 import InsightFilters from '../components/insights/InsightFilters'
 import { incidents, type Filters } from '../data/careInsights'
@@ -15,15 +15,18 @@ import { getReportingWindow } from '../data/reporting'
 function GedragAnalysePage() {
   const { role } = useWorkspaceRole()
   const aggregateOnly = role === 'Directie'
+  const [searchParams] = useSearchParams()
+  const requestedClient = aggregateOnly ? '' : searchParams.get('client') ?? ''
   const [filters, setFilters] = useState<Filters>({ period: '12m', location: 'Alle locaties', origin: 'Alle gemeenten' })
   const reportingWindow = getReportingWindow(filters.period)
   const trajectoryByClient = useMemo(() => new Map(loadTrajectories().map((item) => [item.clientCode, item])), [])
   const filtered = useMemo(() => incidents.filter((incident) =>
     (filters.location === 'Alle locaties' || incident.location === filters.location) &&
     (filters.origin === 'Alle gemeenten' || trajectoryByClient.get(incident.clientCode)?.originMunicipality === filters.origin) &&
+    (!requestedClient || incident.clientCode === requestedClient) &&
     incident.date >= reportingWindow.start &&
     incident.date <= reportingWindow.end
-  ), [filters.location, filters.origin, reportingWindow.end, reportingWindow.start, trajectoryByClient])
+  ), [filters.location, filters.origin, reportingWindow.end, reportingWindow.start, requestedClient, trajectoryByClient])
   const categories = useMemo(() => Array.from(new Set(incidents.map((item) => item.category))).map((name) => {
     const count = filtered.filter((item) => item.category === name).length
     return { name, count, rate: filtered.length ? Math.round((count / filtered.length) * 100) : 0 }
@@ -44,6 +47,7 @@ function GedragAnalysePage() {
 
   return (
     <Stack spacing={2.5}>
+      {requestedClient && <Alert severity="info" action={<Typography component={RouterLink} to={`/jongeren/${requestedClient}`} sx={{ fontWeight: 750, color: 'inherit' }}>Terug naar dossier</Typography>}>Cliëntcontext actief: alleen incidenten van {requestedClient} worden getoond.</Alert>}
       <Alert severity="info" sx={{ border: '1px solid #cfe0ed', borderRadius: 2.5 }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 760 }}>Alleen-lezen prototypeweergave van incidentgegevens</Typography>
         <Typography sx={{ fontSize: 11 }}>Incidentregistratie blijft in het aangewezen bronsysteem. Deze pagina ondersteunt analyse; een productieversie moet bronstatus, synchronisatietijd en formele escalaties aantoonbaar tonen.</Typography>

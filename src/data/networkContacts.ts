@@ -16,6 +16,7 @@ export type NetworkContact = {
   contactPerson: string
   contactRole: string
   channel: 'Telefoon' | 'E-mail' | 'Beveiligd bericht' | 'Overleg'
+  direction?: 'Inkomend' | 'Uitgaand' | 'Gezamenlijk overleg'
   subject: string
   summary: string
   agreement: string
@@ -30,6 +31,10 @@ export type NetworkContact = {
   respondsToContactId?: string
   resolvedAt?: string
   resolvedByContactId?: string
+  correctsContactId?: string
+  correctionReason?: string
+  correctedAt?: string
+  correctedByContactId?: string
 }
 
 export const networkContacts: NetworkContact[] = [
@@ -141,8 +146,8 @@ export const networkContacts: NetworkContact[] = [
 ]
 
 export function contactNeedsAttention(contact: NetworkContact, referenceDate = '2026-07-30') {
-  if (contact.resolvedAt) return false
-  if (['Afgerond', 'Besluit ontvangen'].includes(contact.status)) return false
+  if (contact.resolvedAt || contact.correctedAt) return false
+  if (contact.status === 'Afgerond') return false
   if (contact.status === 'Aanvulling gevraagd') return true
   return Boolean(contact.dueDate && contact.dueDate <= referenceDate)
 }
