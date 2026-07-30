@@ -63,7 +63,7 @@ function DashboardLayout() {
   const meta = location.pathname.endsWith('/uitnodigingen')
     ? { title: 'Uitnodigingen beheren', eyebrow: 'AFSPRAAK & DEELNEMERS' }
     : location.pathname === '/melden'
-    ? { title: 'Iets melden', eyebrow: 'MELDING & OPVOLGING' }
+    ? { title: 'Melding registreren', eyebrow: 'MELDING & OPVOLGING' }
     : location.pathname === '/uitstroom-registratie/bijwerken'
     ? { title: 'Vervolgplek bijwerken', eyebrow: 'DOORSTROOM & BESLUIT' }
     : location.pathname === '/jongeren/nieuw'

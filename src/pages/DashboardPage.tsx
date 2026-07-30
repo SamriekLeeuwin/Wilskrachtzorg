@@ -82,11 +82,11 @@ function DashboardPage() {
   const maxOrigin = Math.max(...originSummary.map((item) => item.count))
   const careActionRoles: WorkspaceRole[] = ['Woonbegeleider', 'Ambulant begeleider', 'Gedragswetenschapper', 'Locatieleider', 'Begeleider', 'Zorgmanager']
   const dashboardShortcuts: Array<{ label: string; detail: string; to: string; icon: ReactNode; roles: WorkspaceRole[] }> = [
-    { label: 'Iets melden', detail: 'Incident of dataprobleem', to: '/melden', icon: <CampaignRoundedIcon />, roles: careActionRoles },
-    { label: 'Taak maken', detail: 'Eigenaar en deadline', to: '/acties/nieuw', icon: <AddTaskRoundedIcon />, roles: careActionRoles },
-    { label: 'Iemand uitnodigen', detail: 'Afspraak en contact', to: '/jongeren?actie=afspraak', icon: <EventAvailableRoundedIcon />, roles: careActionRoles },
-    { label: 'Dossier bekijken', detail: 'Zoeken en inzage', to: '/jongeren', icon: <FolderOpenRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
-    { label: 'Gegevens wijzigen', detail: 'Met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
+    { label: 'Melding registreren', detail: 'Veiligheids-, zorg- of datamelding', to: '/melden', icon: <CampaignRoundedIcon />, roles: careActionRoles },
+    { label: 'Taak aanmaken', detail: 'Actiehouder en deadline vastleggen', to: '/acties/nieuw', icon: <AddTaskRoundedIcon />, roles: careActionRoles },
+    { label: 'Afspraak plannen', detail: 'Genodigden en contactgegevens', to: '/jongeren?actie=afspraak', icon: <EventAvailableRoundedIcon />, roles: careActionRoles },
+    { label: 'Cliëntdossier openen', detail: 'Dossier zoeken en inzien', to: '/jongeren', icon: <FolderOpenRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
+    { label: 'Dossiergegevens wijzigen', detail: 'Wijziging met reden vastleggen', to: '/jongeren?actie=wijzigen', icon: <EditNoteRoundedIcon />, roles: [...careActionRoles, 'Administratie'] },
     { label: 'Nieuwe intake', detail: 'Dossier en traject starten', to: '/jongeren/nieuw', icon: <Groups2RoundedIcon />, roles: ['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie'] },
     { label: 'Uitstroom verwerken', detail: 'Status, besluit en actie', to: '/uitstroom-registratie', icon: <HomeWorkRoundedIcon />, roles: ['Woonbegeleider', 'Ambulant begeleider', 'Locatieleider', 'Administratie'] },
     { label: 'Rapportage openen', detail: 'Uitkomsten en afwijkingen', to: '/rapportages', icon: <ArrowForwardRoundedIcon />, roles: ['Locatieleider', 'Management', 'Directie'] },
@@ -110,8 +110,8 @@ function DashboardPage() {
 
       {visibleShortcuts.length > 0 && (
         <Box sx={{ p: 2.2, bgcolor: '#fff', border: '1px solid #dfe6ec', borderRadius: 2.5 }}>
-          <Typography sx={{ fontSize: 14.5, fontWeight: 780, color: '#172c42' }}>Wat wil je doen?</Typography>
-          <Typography sx={{ mt: .25, mb: 1.5, fontSize: 10.7, color: '#8492a2' }}>Start direct bij je handeling. Het systeem vraagt daarna alleen de benodigde gegevens.</Typography>
+          <Typography sx={{ fontSize: 14.5, fontWeight: 780, color: '#172c42' }}>Directe acties</Typography>
+          <Typography sx={{ mt: .25, mb: 1.5, fontSize: 10.7, color: '#8492a2' }}>Selecteer de handeling die u wilt uitvoeren.</Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(5, 1fr)' }, gap: 1 }}>
             {visibleShortcuts.map((action) => (
               <Button key={action.label} component={RouterLink} to={action.to} variant="outlined" sx={{ p: 1.35, justifyContent: 'flex-start', textAlign: 'left', textTransform: 'none' }}>

@@ -37,8 +37,8 @@ export default function MeldenPage() {
   return (
     <Stack spacing={2.5}>
       <Box>
-        <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Iets melden</Typography>
-        <Typography sx={{ mt: .4, maxWidth: 800, fontSize: 11.2, lineHeight: 1.6, color: '#718395' }}>Kies eerst wat je meldt. Zo komt een veiligheidsincident niet terecht in dezelfde stroom als een datacorrectie.</Typography>
+        <Typography sx={{ fontSize: 20, fontWeight: 780, color: '#172c42' }}>Melding registreren</Typography>
+        <Typography sx={{ mt: .4, maxWidth: 800, fontSize: 11.2, lineHeight: 1.6, color: '#718395' }}>Selecteer het type melding. Veiligheidsincidenten, zorginhoudelijke signalen en datacorrecties volgen ieder een afzonderlijke opvolgingsroute.</Typography>
       </Box>
       <Alert severity="info">Prototype: meldingen worden lokaal opgeslagen. Voor productie moet een veiligheidsincident rechtstreeks en aantoonbaar met Zilliz en de geldende escalatieprocedure worden gekoppeld.</Alert>
       {saved && <Alert severity="success" onClose={() => setSaved(false)}>De melding is vastgelegd en toegewezen.</Alert>}
@@ -46,7 +46,7 @@ export default function MeldenPage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' }, gap: 2.5 }}>
         <Stack spacing={2.5}>
           <Box sx={{ p: 2.3, bgcolor: '#fff', border: '1px solid #e3e9ef', borderRadius: 2.5 }}>
-            <Typography sx={{ mb: 1.5, fontSize: 13.5, fontWeight: 760 }}>1. Wat wil je melden?</Typography>
+            <Typography sx={{ mb: 1.5, fontSize: 13.5, fontWeight: 760 }}>1. Type melding</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1 }}>
               {(['Veiligheidsincident', 'Zorginhoudelijk signaal', 'Datacorrectie'] as const).map((kind) => <Button key={kind} variant={values.kind === kind ? 'contained' : 'outlined'} onClick={() => setValues({ ...values, kind })}>{kind}</Button>)}
             </Box>

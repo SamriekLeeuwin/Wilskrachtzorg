@@ -15,7 +15,7 @@ Binnen vijf seconden antwoord geven op drie vragen: wat vraagt nu mijn aandacht,
 
 ## 3. Problemen die worden opgelost
 
-Versnipperde informatie, onduidelijk eigenaarschap, zoeken in meerdere dossiers, gemiste deadlines en cijfers zonder zichtbare bron/freshness.
+Versnipperde informatie, onduidelijk eigenaarschap, zoeken in meerdere dossiers, gemiste deadlines en cijfers zonder zichtbare bron of peildatum.
 
 ## 4. User stories
 
@@ -39,7 +39,7 @@ Openen → rol en dataversheid herkennen → urgente status lezen → primaire h
 
 ## 7. Componenten
 
-Rolkeuze, freshness-chip, actiekaarten, urgente status, KPI-kaarten, filters, actielijst, lege/fout/loading-status.
+Rolkeuze, peildatum, actiekaarten, urgente status, KPI-kaarten, filters, actielijst, lege, fout- en laadstatus.
 
 ## 8. Navigatie
 
